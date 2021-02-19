@@ -76,18 +76,26 @@ impl Chain {
         Self { head: blocks[&0].number, blocks }
     }
 
-    fn append(&mut self, block: Block) {
+    fn add_block(&mut self, block: Block) {
         matches!(self.blocks.insert(block.number, block), None);
+    }
+
+    fn head() -> Block {
+        todo!();
     }
 }
 
 fn main() {
     // Create an example chain, including votes
     let mut chain = Chain::new();
-    chain.append(Block { number: 1, parent: 0 });
-    chain.append(Block { number: 2, parent: 1 });
-    chain.append(Block { number: 3, parent: 2 });
-    chain.append(Block { number: 4, parent: 3 });
+    chain.add_block(Block { number: 1, parent: 0 });
+    chain.add_block(Block { number: 2, parent: 1 });
+    chain.add_block(Block { number: 3, parent: 2 });
+    chain.add_block(Block { number: 4, parent: 3 });
+
+    chain.add_block(Block { number: 5, parent: 1 });
+    chain.add_block(Block { number: 6, parent: 5 });
+    chain.add_block(Block { number: 7, parent: 6 });
 
     dbg!(&chain);
 }
