@@ -37,7 +37,7 @@ use std::collections::HashMap;
 
 type BlockNumber = u32;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct Block {
     number: BlockNumber,
     parent: BlockNumber,
@@ -77,11 +77,35 @@ impl Chain {
     }
 
     fn add_block(&mut self, block: Block) {
-        matches!(self.blocks.insert(block.number, block), None);
+        // Check that parent exists
+        assert!(matches!(self.blocks.get(&block.parent), Some(_)));
+        assert!(matches!(self.blocks.insert(block.number, block.clone()), None));
+
+        // Update head if the new block has a height height
+        if self.block_height(block.number) > self.head {
+            self.head = block.number;
+        }
     }
 
-    fn head() -> Block {
+    fn block_height(&self, block: BlockNumber) -> u32 {
+        let mut block = self.blocks.get(&block).unwrap();
+        let mut height = 0;
+
+        const MAX_HEIGHT: u32 = 1000;
+        while block.number > 0 && height < MAX_HEIGHT {
+            block = self.blocks.get(&block.parent).unwrap();
+            height += 1;
+        }
+        assert!(height < MAX_HEIGHT);
+        height
+    }
+
+    fn height(&self) -> u32 {
         todo!();
+    }
+
+    fn head(&self) -> &Block {
+        self.blocks.get(&self.head).unwrap()
     }
 }
 
@@ -98,4 +122,67 @@ fn main() {
     chain.add_block(Block { number: 7, parent: 6 });
 
     dbg!(&chain);
+
+    // Add voting metadata
+
+    // Query voter(s)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn block_height() {
+        let mut chain = Chain::new();
+        assert_eq!(chain.head(), &Block { number: 0, parent: 0 });
+        chain.add_block(Block { number: 1, parent: 0 });
+        assert_eq!(chain.head(), &Block { number: 1, parent: 0 });
+        chain.add_block(Block { number: 2, parent: 1 });
+        assert_eq!(chain.head(), &Block { number: 2, parent: 1 });
+        chain.add_block(Block { number: 3, parent: 2 });
+        assert_eq!(chain.head(), &Block { number: 3, parent: 2 });
+        chain.add_block(Block { number: 4, parent: 3 });
+        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+
+        assert_eq!(chain.block_height(4), 4);
+    }
+
+    #[test]
+    fn fork_updates_head() {
+        let mut chain = Chain::new();
+        chain.add_block(Block { number: 1, parent: 0 });
+        assert_eq!(chain.head(), &Block { number: 1, parent: 0 });
+        chain.add_block(Block { number: 2, parent: 1 });
+        assert_eq!(chain.head(), &Block { number: 2, parent: 1 });
+        chain.add_block(Block { number: 3, parent: 2 });
+        assert_eq!(chain.head(), &Block { number: 3, parent: 2 });
+        chain.add_block(Block { number: 4, parent: 3 });
+        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+
+        chain.add_block(Block { number: 5, parent: 1 });
+        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+        chain.add_block(Block { number: 6, parent: 5 });
+        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+        chain.add_block(Block { number: 7, parent: 6 });
+        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+        chain.add_block(Block { number: 8, parent: 7 });
+        assert_eq!(chain.head(), &Block { number: 8, parent: 7 });
+    }
+
+    #[test]
+    #[ignore]
+    fn find_head() {
+        let mut chain = Chain::new();
+        chain.add_block(Block { number: 1, parent: 0 });
+        chain.add_block(Block { number: 2, parent: 1 });
+        chain.add_block(Block { number: 3, parent: 2 });
+        chain.add_block(Block { number: 4, parent: 3 });
+
+        chain.add_block(Block { number: 5, parent: 1 });
+        chain.add_block(Block { number: 6, parent: 5 });
+        chain.add_block(Block { number: 7, parent: 6 });
+
+        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+    }
 }
