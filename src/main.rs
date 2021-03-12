@@ -109,21 +109,21 @@ struct Commit {
 #[derive(Debug)]
 struct Chain {
     head: BlockNumber,
+    finalized: BlockNumber,
     blocks: HashMap<BlockNumber, Block>,
 }
 
 impl Chain {
     fn new() -> Self {
         let mut blocks = HashMap::new();
-
         let genesis = Block {
             number: 0,
             parent: 0,
         };
         blocks.insert(genesis.number, genesis);
-
         Self {
             head: blocks[&0].number,
+            finalized: blocks[&0].number,
             blocks,
         }
     }
@@ -142,10 +142,13 @@ impl Chain {
         }
     }
 
+    fn finalize_block(&mut self, block: BlockNumber) {
+        self.finalized = block;
+    }
+
     fn block_height(&self, block: BlockNumber) -> u32 {
         let mut block = self.blocks.get(&block).unwrap();
         let mut height = 0;
-
         const MAX_HEIGHT: u32 = 10000;
         while block.number > 0 && height < MAX_HEIGHT {
             block = self.blocks.get(&block.parent).unwrap();
@@ -166,13 +169,10 @@ impl Chain {
 
 fn main() {
     // Create an example chain, including votes
-    let chain = {
-        let mut chain = Chain::new();
-        chain.add_block(Block::new(1, 0));
-        chain.add_block(Block::new(2, 1));
-        chain.add_block(Block::new(3, 2));
-        chain
-    };
+    let mut chain = Chain::new();
+    chain.add_block(Block::new(1, 0));
+    chain.add_block(Block::new(2, 1));
+    chain.add_block(Block::new(3, 2));
 
     let voter_set = VoterSet::new(&[0, 1, 2]);
 
@@ -193,9 +193,21 @@ fn main() {
     .collect();
     // g(C) = 1
     // Broadcast commit for B = g(C) = 1
-    //chain.finalize(1);
+    chain.finalize_block(1);
 
     // Round 2
+    let mut round2 = VotingRound::new(2);
+    round2.prevotes = vec![Prevote::new(2, 0), Prevote::new(2, 1), Prevote::new(2, 2)]
+        .into_iter()
+        .collect();
+    round2.precommits = vec![
+        Precommit::new(2, 0),
+        Precommit::new(2, 1),
+        Precommit::new(2, 2),
+    ]
+    .into_iter()
+    .collect();
+    chain.finalize_block(2);
 
     // Query voter(s)
 }
