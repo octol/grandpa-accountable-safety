@@ -43,7 +43,7 @@ struct Block {
     parent: BlockNumber,
 }
 
-type VoterId  = u8;
+type VoterId = u8;
 
 struct VoterSet {
     voters: HashSet<VoterId>,
@@ -98,16 +98,25 @@ impl Chain {
     fn new() -> Self {
         let mut blocks = HashMap::new();
 
-        let genesis = Block { number: 0, parent: 0 };
+        let genesis = Block {
+            number: 0,
+            parent: 0,
+        };
         blocks.insert(genesis.number, genesis);
 
-        Self { head: blocks[&0].number, blocks }
+        Self {
+            head: blocks[&0].number,
+            blocks,
+        }
     }
 
     fn add_block(&mut self, block: Block) {
         // Check that parent exists
         assert!(matches!(self.blocks.get(&block.parent), Some(_)));
-        assert!(matches!(self.blocks.insert(block.number, block.clone()), None));
+        assert!(matches!(
+            self.blocks.insert(block.number, block.clone()),
+            None
+        ));
 
         // Update head if the new block has a height height
         if self.block_height(block.number) > self.head {
@@ -141,9 +150,18 @@ fn main() {
     // Create an example chain, including votes
     let chain = {
         let mut chain = Chain::new();
-        chain.add_block(Block { number: 1, parent: 0 });
-        chain.add_block(Block { number: 2, parent: 1 });
-        chain.add_block(Block { number: 3, parent: 2 });
+        chain.add_block(Block {
+            number: 1,
+            parent: 0,
+        });
+        chain.add_block(Block {
+            number: 2,
+            parent: 1,
+        });
+        chain.add_block(Block {
+            number: 3,
+            parent: 2,
+        });
         chain
     };
 
@@ -152,15 +170,36 @@ fn main() {
     // Round 1
     let mut round1 = VotingRound::new(1);
     // Prevote for the head of the best chain containing E_0
-    let v0 = Prevote { target_number: 1, id: 0 };
-    let v1 = Prevote { target_number: 1, id: 1 };
-    let v2 = Prevote { target_number: 2, id: 2 };
-    round1.prevotes = vec![v0, v1, v2].into_iter().collect();
+    round1.prevotes = vec![
+        Prevote {
+            target_number: 1,
+            id: 0,
+        },
+        Prevote {
+            target_number: 1,
+            id: 1,
+        },
+        Prevote {
+            target_number: 2,
+            id: 2,
+        },
+    ]
+    .into_iter()
+    .collect();
     // Wait for g(V) >= E_0
     // g(V) = 1
-    let c0 = Precommit { target_number: 1, id: 0 };
-    let c1 = Precommit { target_number: 1, id: 1 };
-    let c2 = Precommit { target_number: 1, id: 2 };
+    let c0 = Precommit {
+        target_number: 1,
+        id: 0,
+    };
+    let c1 = Precommit {
+        target_number: 1,
+        id: 1,
+    };
+    let c2 = Precommit {
+        target_number: 1,
+        id: 2,
+    };
     round1.precommits = vec![c0, c1, c2].into_iter().collect();
     // g(C) = 1
     // Broadcast commit for B = g(C) = 1
@@ -178,15 +217,57 @@ mod tests {
     #[test]
     fn block_height() {
         let mut chain = Chain::new();
-        assert_eq!(chain.head(), &Block { number: 0, parent: 0 });
-        chain.add_block(Block { number: 1, parent: 0 });
-        assert_eq!(chain.head(), &Block { number: 1, parent: 0 });
-        chain.add_block(Block { number: 2, parent: 1 });
-        assert_eq!(chain.head(), &Block { number: 2, parent: 1 });
-        chain.add_block(Block { number: 3, parent: 2 });
-        assert_eq!(chain.head(), &Block { number: 3, parent: 2 });
-        chain.add_block(Block { number: 4, parent: 3 });
-        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 0,
+                parent: 0
+            }
+        );
+        chain.add_block(Block {
+            number: 1,
+            parent: 0,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 1,
+                parent: 0
+            }
+        );
+        chain.add_block(Block {
+            number: 2,
+            parent: 1,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 2,
+                parent: 1
+            }
+        );
+        chain.add_block(Block {
+            number: 3,
+            parent: 2,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 3,
+                parent: 2
+            }
+        );
+        chain.add_block(Block {
+            number: 4,
+            parent: 3,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 4,
+                parent: 3
+            }
+        );
 
         assert_eq!(chain.block_height(4), 4);
         assert_eq!(chain.height(), 4);
@@ -195,23 +276,95 @@ mod tests {
     #[test]
     fn fork_updates_head() {
         let mut chain = Chain::new();
-        chain.add_block(Block { number: 1, parent: 0 });
-        assert_eq!(chain.head(), &Block { number: 1, parent: 0 });
-        chain.add_block(Block { number: 2, parent: 1 });
-        assert_eq!(chain.head(), &Block { number: 2, parent: 1 });
-        chain.add_block(Block { number: 3, parent: 2 });
-        assert_eq!(chain.head(), &Block { number: 3, parent: 2 });
-        chain.add_block(Block { number: 4, parent: 3 });
-        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
+        chain.add_block(Block {
+            number: 1,
+            parent: 0,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 1,
+                parent: 0
+            }
+        );
+        chain.add_block(Block {
+            number: 2,
+            parent: 1,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 2,
+                parent: 1
+            }
+        );
+        chain.add_block(Block {
+            number: 3,
+            parent: 2,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 3,
+                parent: 2
+            }
+        );
+        chain.add_block(Block {
+            number: 4,
+            parent: 3,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 4,
+                parent: 3
+            }
+        );
 
-        chain.add_block(Block { number: 5, parent: 1 });
-        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
-        chain.add_block(Block { number: 6, parent: 5 });
-        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
-        chain.add_block(Block { number: 7, parent: 6 });
-        assert_eq!(chain.head(), &Block { number: 4, parent: 3 });
-        chain.add_block(Block { number: 8, parent: 7 });
-        assert_eq!(chain.head(), &Block { number: 8, parent: 7 });
+        chain.add_block(Block {
+            number: 5,
+            parent: 1,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 4,
+                parent: 3
+            }
+        );
+        chain.add_block(Block {
+            number: 6,
+            parent: 5,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 4,
+                parent: 3
+            }
+        );
+        chain.add_block(Block {
+            number: 7,
+            parent: 6,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 4,
+                parent: 3
+            }
+        );
+        chain.add_block(Block {
+            number: 8,
+            parent: 7,
+        });
+        assert_eq!(
+            chain.head(),
+            &Block {
+                number: 8,
+                parent: 7
+            }
+        );
 
         assert_eq!(chain.height(), 5);
     }
