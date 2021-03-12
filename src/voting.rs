@@ -15,6 +15,10 @@ impl VoterSet {
             voters: voter_ids.into_iter().cloned().collect(),
         }
     }
+
+	pub fn is_member(&self, voter: VoterId) -> bool {
+		self.voters.contains(voter)
+	}
 }
 
 pub struct VotingRound {
@@ -37,15 +41,22 @@ impl VotingRound {
     pub fn prevote(&mut self, votes: &[(BlockNumber, VoterId)]) {
         let mut votes = votes
             .into_iter()
-            .map(|(n, id)| Prevote::new(*n, id))
+            .map(|(n, id)| {
+				assert!(self.voter_set.is_member(id));
+				Prevote::new(*n, id)
+			})
             .collect::<Vec<_>>();
         self.prevotes.append(&mut votes);
+
     }
 
 	pub fn precommit(&mut self, votes: &[(BlockNumber, VoterId)]) {
         let mut votes = votes
             .into_iter()
-            .map(|(n, id)| Precommit::new(*n, id))
+            .map(|(n, id)| {
+				assert!(self.voter_set.is_member(id));
+				Precommit::new(*n, id)
+			})
             .collect::<Vec<_>>();
         self.precommits.append(&mut votes);
 	}

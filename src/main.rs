@@ -33,10 +33,9 @@
 // A: A set T of prevotes with a supermajority for B.
 //    Take the union with S and find the equivocators.
 
-use crate::block::{Block, BlockNumber};
+use crate::block::Block;
 use crate::chain::Chain;
-use crate::voting::{Precommit, Prevote, VoterSet, VotingRound};
-use std::collections::HashMap;
+use crate::voting::{VoterSet, VotingRound};
 
 mod block;
 mod chain;
@@ -59,21 +58,9 @@ fn main() {
 
     // Round 2
     let mut round2 = VotingRound::new(2, voter_set.clone());
-    round2.prevotes = vec![
-        Prevote::new(2, "a"),
-        Prevote::new(2, "b"),
-        Prevote::new(2, "c"),
-    ]
-    .into_iter()
-    .collect();
-    round2.precommits = vec![
-        Precommit::new(2, "a"),
-        Precommit::new(2, "b"),
-        Precommit::new(2, "c"),
-    ]
-    .into_iter()
-    .collect();
-    chain.finalize_block(2);
+    round2.prevote(&[(4, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    round2.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    chain.finalize_block(8);
 
     // Query voter(s)
 }
