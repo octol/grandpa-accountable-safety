@@ -2,8 +2,9 @@ use std::collections::HashSet;
 
 use crate::block::BlockNumber;
 
-type VoterId = u8;
+type VoterId = &'static str;
 
+#[derive(Clone)]
 pub struct VoterSet {
     pub voters: HashSet<VoterId>,
 }
@@ -11,27 +12,46 @@ pub struct VoterSet {
 impl VoterSet {
     pub fn new(voter_ids: &[VoterId]) -> Self {
         Self {
-            voters: voter_ids.iter().cloned().collect(),
+            voters: voter_ids.into_iter().cloned().collect(),
         }
     }
 }
 
 pub struct VotingRound {
     pub round_number: u64,
+    pub voter_set: VoterSet,
     pub prevotes: Vec<Prevote>,
     pub precommits: Vec<Precommit>,
 }
 
 impl VotingRound {
-    pub fn new(round_number: u64) -> Self {
+    pub fn new(round_number: u64, voter_set: VoterSet) -> Self {
         Self {
             round_number,
+            voter_set,
             prevotes: Default::default(),
             precommits: Default::default(),
         }
     }
+
+    pub fn prevote(&mut self, votes: &[(BlockNumber, VoterId)]) {
+        let mut votes = votes
+            .into_iter()
+            .map(|(n, id)| Prevote::new(*n, id))
+            .collect::<Vec<_>>();
+        self.prevotes.append(&mut votes);
+    }
+
+	pub fn precommit(&mut self, votes: &[(BlockNumber, VoterId)]) {
+        let mut votes = votes
+            .into_iter()
+            .map(|(n, id)| Precommit::new(*n, id))
+            .collect::<Vec<_>>();
+        self.precommits.append(&mut votes);
+	}
 }
 
+#[derive(Clone)]
 pub struct Prevote {
     pub target_number: BlockNumber,
     pub id: VoterId,

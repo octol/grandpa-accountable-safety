@@ -33,58 +33,71 @@
 // A: A set T of prevotes with a supermajority for B.
 //    Take the union with S and find the equivocators.
 
+use crate::block::{Block, BlockNumber};
 use crate::chain::Chain;
 use crate::voting::{Precommit, Prevote, VoterSet, VotingRound};
-use crate::block::{Block, BlockNumber};
 use std::collections::HashMap;
 
 mod block;
-mod voting;
 mod chain;
+mod voting;
 
 fn main() {
-    // Create an example chain, including votes
-    let mut chain = Chain::new();
-    chain.add_block(Block::new(1, 0));
-    chain.add_block(Block::new(2, 1));
-    chain.add_block(Block::new(3, 2));
-
-    let voter_set = VoterSet::new(&[0, 1, 2]);
+    let mut chain = create_chain();
+    let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
 
     // Round 1
-    let mut round1 = VotingRound::new(1);
+    let mut round1 = VotingRound::new(1, voter_set.clone());
     // Prevote for the head of the best chain containing E_0
-    round1.prevotes = vec![Prevote::new(1, 0), Prevote::new(1, 1), Prevote::new(2, 2)]
-        .into_iter()
-        .collect();
+    round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
     // Wait for g(V) >= E_0
     // g(V) = 1
-    round1.precommits = vec![
-        Precommit::new(1, 0),
-        Precommit::new(1, 1),
-        Precommit::new(1, 2),
-    ]
-    .into_iter()
-    .collect();
+    round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
     // g(C) = 1
     // Broadcast commit for B = g(C) = 1
     chain.finalize_block(1);
 
     // Round 2
-    let mut round2 = VotingRound::new(2);
-    round2.prevotes = vec![Prevote::new(2, 0), Prevote::new(2, 1), Prevote::new(2, 2)]
-        .into_iter()
-        .collect();
+    let mut round2 = VotingRound::new(2, voter_set.clone());
+    round2.prevotes = vec![
+        Prevote::new(2, "a"),
+        Prevote::new(2, "b"),
+        Prevote::new(2, "c"),
+    ]
+    .into_iter()
+    .collect();
     round2.precommits = vec![
-        Precommit::new(2, 0),
-        Precommit::new(2, 1),
-        Precommit::new(2, 2),
+        Precommit::new(2, "a"),
+        Precommit::new(2, "b"),
+        Precommit::new(2, "c"),
     ]
     .into_iter()
     .collect();
     chain.finalize_block(2);
 
     // Query voter(s)
+}
+
+fn create_chain() -> Chain {
+    // 0 -> 1 -> 2 -> 3 -> 4
+    //       \-> 5 -> 6 -> 7 -> 8
+    let mut chain = Chain::new();
+    chain.add_block(Block::new(1, 0));
+
+    // First fork
+    chain.add_block(Block::new(2, 1));
+    chain.add_block(Block::new(3, 2));
+    chain.add_block(Block::new(4, 3));
+
+    // Second, longer, fork
+    chain.add_block(Block::new(5, 1));
+    chain.add_block(Block::new(6, 5));
+    chain.add_block(Block::new(7, 6));
+    chain.add_block(Block::new(8, 7));
+
+    assert_eq!(chain.block_height(4), 4);
+    assert_eq!(chain.block_height(8), 5);
+    chain
 }
 
 #[cfg(test)]
