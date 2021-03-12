@@ -33,139 +33,14 @@
 // A: A set T of prevotes with a supermajority for B.
 //    Take the union with S and find the equivocators.
 
-use std::collections::{HashMap, HashSet};
+use crate::chain::Chain;
+use crate::voting::{Precommit, Prevote, VoterSet, VotingRound};
+use crate::block::{Block, BlockNumber};
+use std::collections::HashMap;
 
-type BlockNumber = u32;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct Block {
-    number: BlockNumber,
-    parent: BlockNumber,
-}
-
-impl Block {
-    fn new(number: BlockNumber, parent: BlockNumber) -> Self {
-        Self { number, parent }
-    }
-}
-
-type VoterId = u8;
-
-struct VoterSet {
-    voters: HashSet<VoterId>,
-}
-
-impl VoterSet {
-    fn new(voter_ids: &[VoterId]) -> Self {
-        Self {
-            voters: voter_ids.iter().cloned().collect(),
-        }
-    }
-}
-
-struct VotingRound {
-    round_number: u64,
-    prevotes: Vec<Prevote>,
-    precommits: Vec<Precommit>,
-}
-
-impl VotingRound {
-    fn new(round_number: u64) -> Self {
-        Self {
-            round_number,
-            prevotes: Default::default(),
-            precommits: Default::default(),
-        }
-    }
-}
-
-struct Prevote {
-    target_number: BlockNumber,
-    id: VoterId,
-}
-
-impl Prevote {
-    fn new(target_number: BlockNumber, id: VoterId) -> Self {
-        Self { target_number, id }
-    }
-}
-
-struct Precommit {
-    target_number: BlockNumber,
-    id: VoterId,
-}
-
-impl Precommit {
-    fn new(target_number: BlockNumber, id: VoterId) -> Self {
-        Self { target_number, id }
-    }
-}
-
-struct Commit {
-    target_number: BlockNumber,
-    precommits: Vec<Precommit>,
-}
-
-#[derive(Debug)]
-struct Chain {
-    head: BlockNumber,
-    finalized: BlockNumber,
-    blocks: HashMap<BlockNumber, Block>,
-}
-
-impl Chain {
-    fn new() -> Self {
-        let mut blocks = HashMap::new();
-        let genesis = Block {
-            number: 0,
-            parent: 0,
-        };
-        blocks.insert(genesis.number, genesis);
-        Self {
-            head: blocks[&0].number,
-            finalized: blocks[&0].number,
-            blocks,
-        }
-    }
-
-    fn add_block(&mut self, block: Block) {
-        // Check that parent exists
-        assert!(matches!(self.blocks.get(&block.parent), Some(_)));
-        assert!(matches!(
-            self.blocks.insert(block.number, block.clone()),
-            None
-        ));
-
-        // Update head if the new block has a height height
-        if self.block_height(block.number) > self.head {
-            self.head = block.number;
-        }
-    }
-
-    fn finalize_block(&mut self, block: BlockNumber) {
-        self.finalized = block;
-    }
-
-    fn block_height(&self, block: BlockNumber) -> u32 {
-        let mut block = self.blocks.get(&block).unwrap();
-        let mut height = 0;
-        const MAX_HEIGHT: u32 = 10000;
-        while block.number > 0 && height < MAX_HEIGHT {
-            block = self.blocks.get(&block.parent).unwrap();
-            height += 1;
-        }
-        assert!(height < MAX_HEIGHT, "Maybe a loop");
-        height
-    }
-
-    fn height(&self) -> u32 {
-        self.block_height(self.head)
-    }
-
-    fn head(&self) -> &Block {
-        self.blocks.get(&self.head).unwrap()
-    }
-}
+mod block;
+mod voting;
+mod chain;
 
 fn main() {
     // Create an example chain, including votes
