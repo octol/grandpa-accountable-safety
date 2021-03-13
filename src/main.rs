@@ -33,6 +33,28 @@
 // A: A set T of prevotes with a supermajority for B.
 //    Take the union with S and find the equivocators.
 
+// Definitions
+// ===========
+
+// GHOST Function
+// --------------
+// The function g(S) takes the set of votes and returns the block B with the highest block number
+// such that S has a supermajority for B.
+
+// Estimate
+// --------
+// E_{r,v} is v's estimate of what might have been finalized in round r, given by the last block in
+// the chain with head g(V_{r,v}) for which it is possible for C_{r,v} to have a supermajority.
+
+// Completable
+// -----------
+// If either E_{r,v} < g(V_{r,v}) or it is impossible for C_{r,v} to have a supermajority for any
+// children of g(V_{r,v}), then we say that v sees that round r as completable.
+//
+// In other words, when E_{r,v} contains everything that could have been finalized in round r.
+
+// E_{r,v} having supermajority => E_{r,v} < g(V_{r,v}).
+
 use crate::block::Block;
 use crate::chain::Chain;
 use crate::voting::{VoterSet, VotingRound};
@@ -45,11 +67,13 @@ fn main() {
     let mut chain = create_chain();
     let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
 
-    // Round 1
+    // Round 0: is genesis.
+
+    // Round 1: Round starts when the previous round is completable.
     let mut round1 = VotingRound::new(1, voter_set.clone());
     // Prevote for the head of the best chain containing E_0
     round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
-    // Wait for g(V) >= E_0
+    // Wait for g(V) >= E_0 = 0
     // g(V) = 1
     round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
     // g(C) = 1
