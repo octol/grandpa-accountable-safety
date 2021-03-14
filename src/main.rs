@@ -64,6 +64,11 @@ mod chain;
 mod voting;
 
 fn main() {
+    safe_chain();
+    unsafe_chain();
+}
+
+fn safe_chain() {
     let mut chain = create_chain();
     let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
 
@@ -84,6 +89,38 @@ fn main() {
     let mut round2 = VotingRound::new(2, voter_set.clone());
     round2.prevote(&[(4, "a"), (8, "b"), (8, "c"), (8, "d")]);
     round2.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    chain.finalize_block(8);
+
+    // Query voter(s)
+}
+
+fn unsafe_chain() {
+    let mut chain = create_chain();
+    let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
+
+    // Round 0: is genesis.
+
+    // Round 1: Round starts when the previous round is completable.
+    let mut round1 = VotingRound::new(1, voter_set.clone());
+    // Prevote for the head of the best chain containing E_0
+    round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
+    // Wait for g(V) >= E_0 = 0
+    // g(V) = 1
+    round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
+    // g(C) = 1
+    // Broadcast commit for B = g(C) = 1
+    chain.finalize_block(1);
+
+    // Round 2: finalize on first fork
+    let mut round2 = VotingRound::new(2, voter_set.clone());
+    round2.prevote(&[(2, "a"), (2, "b"), (3, "c"), (3, "d")]);
+    round2.precommit(&[(2, "a"), (2, "b"), (2, "c"), (2, "d")]);
+    chain.finalize_block(2);
+
+    // Round 3: finalize on second fork
+    let mut round3 = VotingRound::new(3, voter_set.clone());
+    round3.prevote(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    round3.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
     chain.finalize_block(8);
 
     // Query voter(s)
