@@ -94,36 +94,143 @@ fn safe_chain() {
     // Query voter(s)
 }
 
-fn unsafe_chain() {
+// The idea in the scenario is that we will get conflicting results from the commit message and the
+// set of precommits returned when querying the voters. This allows us to identify the
+// equivocators.
+fn unsafe_chain_scenario_from_paper() {
     let mut chain = create_chain();
     let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
 
     // Round 0: is genesis.
 
-    // Round 1: Round starts when the previous round is completable.
+    // Round 1: vote on each side of the fork and the finalize the common ancestor of both.
+    // "a" and "b" sees first fork, "c" and "d" seems the second fork.
     let mut round1 = VotingRound::new(1, voter_set.clone());
-    // Prevote for the head of the best chain containing E_0
     round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
-    // Wait for g(V) >= E_0 = 0
-    // g(V) = 1
     round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
-    // g(C) = 1
-    // Broadcast commit for B = g(C) = 1
     chain.finalize_block(1);
 
     // Round 2: finalize on first fork
+    // "a" and "b" see the same block 2 and the first fork as the longest. "c" and "d" now see
+    // block 3, meaning that they also now see the first fork as the longest.
     let mut round2 = VotingRound::new(2, voter_set.clone());
     round2.prevote(&[(2, "a"), (2, "b"), (3, "c"), (3, "d")]);
     round2.precommit(&[(2, "a"), (2, "b"), (2, "c"), (2, "d")]);
     chain.finalize_block(2);
 
     // Round 3: finalize on second fork
+    // "a" sees another block on the same fork, "b", "c", "d" all see block 8 on the second fork as
+    // the longest. The first fork has been finalized however, invalidating block 8.
     let mut round3 = VotingRound::new(3, voter_set.clone());
     round3.prevote(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
     round3.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
     chain.finalize_block(8);
 
     // Query voter(s)
+    // Step 0: detect that block 2 and 8 on different branches are finalized.
+    // Step 1: (not applicable since we are at round r+1 already)
+    // Step 2:
+    //  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
+    //     precommitting for 8?
+    //
+    // Alternative 1:
+    //  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
+    //     block 2 in round 2.
+    //
+    //  S_a = {2, 2, 2, 2}
+    //  S_b = {2, 2, 2, 2}
+    //  S_c = {2, 2, 5, 5}
+    //  S_d = {2, 2, 5, 5}
+    //
+    //  NOTE: "c" and "d" must collude here to sign each others precommitts that are not part of
+    //  the commit message.
+    //
+    //  => Take union with precommits in commit message for block 2 to find equivocators.
+    //
+    //  {2, 2, 5, 5} U {2, 2, 2, 2}
+    //  => "c" and "d" appears twice. They equivocated.
+    //  But where does this set S with "false" votes come from?
+    //  And presumably this is signed somehow so that we can trust the authenticity.
+    //
+    // Alternative 2:
+    //  A: A set of prevotes for round 2.
+    //
+    //  S = {2, 2, 5, 5}
+    //
+    // Step 3.
+    //  Q: Ask precommitters in commit message for block 2 which prevotes have you seen?
+    //  A:
+    //
+    //  S_a = {2, 2, 3, 3}
+    //  S_b = {2, 2, 3, 3}
+    //  S_c = {2, 2, 3, 3}
+    //  S_d = {2, 2, 3, 3}
+    //
+    //  {2, 2, 3, 3} U {2, 2, 5, 5}
+    //  => "c" and "d" occuts twice and equivocated
+    //
+}
+
+// Here the byzantine actors do return the honest precommits, and that shows they just ignored the
+// finalized block.
+fn unsafe_chain() {
+    let mut chain = create_chain();
+    let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
+
+    // Round 0: is genesis.
+
+    // Round 1: vote on each side of the fork and the finalize the common ancestor of both.
+    // "a" and "b" sees first fork, "c" and "d" seems the second fork.
+    let mut round1 = VotingRound::new(1, voter_set.clone());
+    round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
+    round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
+    chain.finalize_block(1);
+
+    // Round 2: finalize on first fork
+    // "a" and "b" see the same block 2 and the first fork as the longest. "c" and "d" now see
+    // block 3, meaning that they also now see the first fork as the longest.
+    let mut round2 = VotingRound::new(2, voter_set.clone());
+    round2.prevote(&[(2, "a"), (2, "b"), (3, "c"), (3, "d")]);
+    round2.precommit(&[(2, "a"), (2, "b"), (2, "c"), (2, "d")]);
+    chain.finalize_block(2);
+
+    // Round 3: finalize on second fork
+    // "a" sees another block on the same fork, "b", "c", "d" all see block 8 on the second fork as
+    // the longest. The first fork has been finalized however, invalidating block 8.
+    let mut round3 = VotingRound::new(3, voter_set.clone());
+    round3.prevote(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    round3.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    chain.finalize_block(8);
+
+    // Query voter(s)
+    // Step 0: block 2 and 8 on different branches are finalized.
+    // Step 1: (not applicable since we are at round r+1 already)
+    // Step 2:
+    //  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
+    //     precommitting for 8?
+    //
+    // Alternative 1:
+    //  A: A set of precommits for round 2, S = {2, 2, 2, 2}
+    //  => Take union with precommits in commit msg for block 2 to find equivocators.
+    //
+    //  {2, 2, 2, 2} U {2, 2, 2, 2}
+    //  => ?? (finished)
+    //  => What does this mean?
+    //  This to me looks a like failure to respond in valid way. S did infact have supermajority
+    //  for block 2.
+    //
+    //  We should here see that "b", "c", "d" all had estimates that did not include 2.
+    //
+    // Alternative 2:
+    //  A: A set of prevotes for round 2.
+    //
+    // Step 3.
+    //  Q: Ask precommitters in commit msg for block 2 which prevotes have you seen?
+    //  A: {2, 2, 3, 3}
+    //
+    //  {2, 2, 3, 3} U {2, 2, 3, 3}
+    //  => ??
+    //
 }
 
 fn create_chain() -> Chain {
