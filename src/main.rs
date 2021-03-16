@@ -199,7 +199,7 @@ fn unsafe_chain() {
     // the longest. The first fork has been finalized however, invalidating block 8.
     let mut round3 = VotingRound::new(3, voter_set.clone());
     round3.prevote(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
-    round3.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
+    round3.precommit(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
     chain.finalize_block(8);
 
     // Query voter(s)
@@ -211,15 +211,14 @@ fn unsafe_chain() {
     //
     // Alternative 1:
     //  A: A set of precommits for round 2, S = {2, 2, 2, 2}
-    //  => Take union with precommits in commit msg for block 2 to find equivocators.
     //
-    //  {2, 2, 2, 2} U {2, 2, 2, 2}
-    //  => ?? (finished)
-    //  => What does this mean?
+    //  There are no equivocators here, just a failure to follow protocol.
+    //
     //  This to me looks a like failure to respond in valid way. S did infact have supermajority
     //  for block 2.
     //
     //  We should here see that "b", "c", "d" all had estimates that did not include 2.
+    //  Also, did 3 right to even precommit? Don't think so since g(V) did not include E_2
     //
     // Alternative 2:
     //  A: A set of prevotes for round 2.
