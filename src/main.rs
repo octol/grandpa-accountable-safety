@@ -57,7 +57,7 @@
 
 use crate::block::Block;
 use crate::chain::Chain;
-use crate::voting::{VoterSet, VotingRound};
+use crate::voting::{Commit, VoterSet, VotingRound};
 
 mod block;
 mod chain;
@@ -65,7 +65,7 @@ mod voting;
 
 fn main() {
 	safe_chain();
-	unsafe_chain();
+	unsafe_chain_scenario_from_paper();
 }
 
 fn safe_chain() {
@@ -83,12 +83,14 @@ fn safe_chain() {
 	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
 	// g(C) = 1
 	// Broadcast commit for B = g(C) = 1
-	let commit_1 = chain.finalize_block(1);
+	let _commit_1 = Commit::new(1, round1.precommits.clone());
+	chain.finalize_block(1);
 
 	// Round 2
 	let mut round2 = VotingRound::new(2, voter_set.clone());
 	round2.prevote(&[(4, "a"), (8, "b"), (8, "c"), (8, "d")]);
 	round2.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
+	let _commit_2 = Commit::new(8, round2.precommits.clone());
 	chain.finalize_block(8);
 }
 
@@ -106,127 +108,88 @@ fn unsafe_chain_scenario_from_paper() {
 	let mut round1 = VotingRound::new(1, voter_set.clone());
 	round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
 	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
+	let _commit1 = Commit::new(1, round1.precommits.clone());
 	chain.finalize_block(1);
 
-	// Round 2: finalize on first fork
-	// "a" and "b" see the same block 2 and the first fork as the longest. "c" and "d" now see
-	// block 3, meaning that they also now see the first fork as the longest.
-	let mut round2 = VotingRound::new(2, voter_set.clone());
-	round2.prevote(&[(2, "a"), (2, "b"), (3, "c"), (3, "d")]);
-	round2.precommit(&[(2, "a"), (2, "b"), (2, "c"), (2, "d")]);
+	// Round 2:
+	// Split into two: ("a", "b", "c") and ("a", "b", "d")
+	// The first group "1" finalizes the first fork
+	let mut round2_1 = VotingRound::new(2, voter_set.clone());
+	round2_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
+	round2_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
+	let _commit2_1 = Commit::new(2, round2_1.precommits.clone());
 	chain.finalize_block(2);
 
-	// Round 3: finalize on second fork
-	// "a" sees another block on the same fork, "b", "c", "d" all see block 8 on the second fork as
-	// the longest. The first fork has been finalized however, invalidating block 8.
-	let mut round3 = VotingRound::new(3, voter_set.clone());
-	round3.prevote(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
-	round3.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
+	// The second group "2" does not finalize anything
+	let mut round2_2 = VotingRound::new(2, voter_set.clone());
+	round2_2.prevote(&[(1, "a"), (1, "b"), (5, "d")]);
+	round2_2.precommit(&[(1, "a"), (1, "b"), (1, "d")]);
+
+	// Round 3:
+	// The first group "1" does not finalize anything
+	let mut round3_1 = VotingRound::new(3, voter_set.clone());
+	round3_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
+	round3_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
+
+	// The second group "2" finalizes the second fork
+	// "d" has not seen the commit from the first group in round 2.
+	let mut round3_2 = VotingRound::new(3, voter_set.clone());
+	round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
+	round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
+	let _commit3_2 = Commit::new(8, round3_1.precommits.clone());
 	chain.finalize_block(8);
 
 	// Query voter(s)
+	//
 	// Step 0: detect that block 2 and 8 on different branches are finalized.
+	//
+	//  We receive commits for both finalized blocks, commit2_1 and commit3_2, and see that one is
+	//  not the a common ancestor of the other.
+	//
 	// Step 1: (not applicable since we are at round r+1 already)
+	//
 	// Step 2:
 	//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
 	//     precommitting for 8?
 	//
+	// (NOTE: we are only asking the voters that precomitted for 8, so {a, b, _, d}). (prevoted?)
+	//
 	// Alternative 1:
+	//
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
 	//
-	//  S_a = {2, 2, 2, 2}
-	//  S_b = {2, 2, 2, 2}
-	//  S_c = {2, 2, 5, 5}
-	//  S_d = {2, 2, 5, 5}
+	// Responses
+	//  S_a = {1, 1, _, 1}
+	//  S_b = {1, 1, _, 1}
+	//  S_d = {1, 1, _, 1}
 	//
-	//  NOTE: "c" and "d" must collude here to sign each others precommitts that are not part of
-	//  the commit message.
+	// (NOTE: "a" and "b" chooses to not send the precommits it saw as part of group 1 as that would
+	// not have been a valid reply.)
 	//
-	//  => Take union with precommits in commit message for block 2 to find equivocators.
-	//
-	//  {2, 2, 5, 5} U {2, 2, 2, 2}
-	//  => "c" and "d" appears twice. They equivocated.
-	//  But where does this set S with "false" votes come from?
-	//  And presumably this is signed somehow so that we can trust the authenticity.
+	// Take union with precommits in commit message for block 2 to find equivocators.
+	// 	{4, 4, 4, _} U {1, 1, _, 1} => "a" and "b" appears twice, they *equivocated*!
 	//
 	// Alternative 2:
+	// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
 	//  A: A set of prevotes for round 2.
 	//
-	//  S = {2, 2, 5, 5}
+	//  S_a = {1, 1, _, 5}
+	//  S_b = {1, 1, _, 5}
+	//  S_d = {1, 1, _, 5}
 	//
 	// Step 3.
-	//  Q: Ask precommitters in commit message for block 2 which prevotes have you seen?
-	//  A:
+	//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
+	//     prevotes have you seen?
+	//  A: This is voters {a, b, c, _}
 	//
-	//  S_a = {2, 2, 3, 3}
-	//  S_b = {2, 2, 3, 3}
-	//  S_c = {2, 2, 3, 3}
-	//  S_d = {2, 2, 3, 3}
+	//  T_a = {4, 4, 2, _}
+	//  T_b = {4, 4, 2, _}
+	//  T_c = {4, 4, 2, _}
 	//
-	//  {2, 2, 3, 3} U {2, 2, 5, 5}
-	//  => "c" and "d" occuts twice and equivocated
+	// Take the union S U T
 	//
-}
-
-// Here the byzantine actors do return the honest precommits, and that shows they just ignored the
-// finalized block.
-fn unsafe_chain() {
-	let mut chain = create_chain();
-	let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
-
-	// Round 0: is genesis.
-
-	// Round 1: vote on each side of the fork and the finalize the common ancestor of both.
-	// "a" and "b" sees first fork, "c" and "d" seems the second fork.
-	let mut round1 = VotingRound::new(1, voter_set.clone());
-	round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
-	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
-	chain.finalize_block(1);
-
-	// Round 2: finalize on first fork
-	// "a" and "b" see the same block 2 and the first fork as the longest. "c" and "d" now see
-	// block 3, meaning that they also now see the first fork as the longest.
-	let mut round2 = VotingRound::new(2, voter_set.clone());
-	round2.prevote(&[(2, "a"), (2, "b"), (3, "c"), (3, "d")]);
-	round2.precommit(&[(2, "a"), (2, "b"), (2, "c"), (2, "d")]);
-	chain.finalize_block(2);
-
-	// Round 3: finalize on second fork
-	// "a" sees another block on the same fork, "b", "c", "d" all see block 8 on the second fork as
-	// the longest. The first fork has been finalized however, invalidating block 8.
-	let mut round3 = VotingRound::new(3, voter_set.clone());
-	round3.prevote(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
-	round3.precommit(&[(3, "a"), (8, "b"), (8, "c"), (8, "d")]);
-	chain.finalize_block(8);
-
-	// Query voter(s)
-	// Step 0: block 2 and 8 on different branches are finalized.
-	// Step 1: (not applicable since we are at round r+1 already)
-	// Step 2:
-	//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
-	//     precommitting for 8?
-	//
-	// Alternative 1:
-	//  A: A set of precommits for round 2, S = {2, 2, 2, 2}
-	//
-	//  There are no equivocators here, just a failure to follow protocol.
-	//
-	//  This to me looks a like failure to respond in valid way. S did infact have supermajority
-	//  for block 2.
-	//
-	//  We should here see that "b", "c", "d" all had estimates that did not include 2.
-	//  Also, did 3 right to even precommit? Don't think so since g(V) did not include E_2
-	//
-	// Alternative 2:
-	//  A: A set of prevotes for round 2.
-	//
-	// Step 3.
-	//  Q: Ask precommitters in commit msg for block 2 which prevotes have you seen?
-	//  A: {2, 2, 3, 3}
-	//
-	//  {2, 2, 3, 3} U {2, 2, 3, 3}
-	//  => ??
+	//  {1, 1, _, 5} U {4, 4, 2, _}  => "a" and "b" occurs twice and equivocated
 	//
 }
 

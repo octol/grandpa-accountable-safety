@@ -73,6 +73,7 @@ impl Prevote {
 	}
 }
 
+#[derive(Clone)]
 pub struct Precommit {
 	pub target_number: BlockNumber,
 	pub id: VoterId,
@@ -87,4 +88,13 @@ impl Precommit {
 pub struct Commit {
 	target_number: BlockNumber,
 	precommits: Vec<Precommit>,
+}
+
+impl Commit {
+	pub fn new(target_number: BlockNumber, precommits: Vec<Precommit>) -> Self {
+		Self {
+			target_number,
+			precommits,
+		}
+	}
 }
