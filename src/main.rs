@@ -1,11 +1,52 @@
-// Outline of Accountable safety algorithm
-// =======================================
+// Accountable Safety for GRANDPA
+// ==============================
+//
+// Accountable Safety for GRANDPA is a synchronous interactive protocol for tracking down and
+// proving after the fact when participants misbehave. The idea is that even is more than 1/3 of
+// participants misbehave and finalize conflicting forks, they will not get away with and will get
+// their stake slashed.
+//
+// In the GRANDPA paper[1] there is a proof by construction for showing that if two blocks B and B'
+// for which valid commit messages were sent, but do not lie on the same chain, then there are at
+// least f + 1 Byzantine voters. The proof itself then provides the procedure for tracking down this
+// set of misbehaving voters.
+//
+// Definitions
+// ===========
+//
+// We refer to the GRANDPA paper [1] for in-depth material, it is still useful to restate a some of
+// the more important definitions here.
+//
+// GHOST Function
+// --------------
+// The function g(S) takes the set of votes and returns the block B with the highest block number
+// such that S has a supermajority for B.
+//
+// Estimate
+// --------
+// E_{r,v} is voter v's estimate of what might have been finalized in round r, given by the last
+// block in the chain with head g(V_{r,v}) for which it is possible for C_{r,v} to have a
+// supermajority.
+//
+// Completable
+// -----------
+// If either E_{r,v} < g(V_{r,v}) or it is impossible for C_{r,v} to have a supermajority for any
+// children of g(V_{r,v}), then we say that v sees that round r as completable.
+//
+// In other words, when E_{r,v} contains everything that could have been finalized in round r.
+//
+// E_{r,v} having supermajority means that E_{r,v} < g(V_{r,v}).
+// WIP(JON): how?
+//
+// Outline of the Procedure
+// ========================
 //
 // Step 0.
 // -------
 //
-// Detect blocks B and B' on two different branches finalized
-// Assume B' was finalized in a later round than B, r'> r.
+// The first step is detecting blocks B and B' on two different branches being finalized.
+// We assume B' was finalized in a later round r' than B, which was finalized in round r.
+// That is, r'> r.
 //
 // o-o-o-B
 //    \o-o-B'
@@ -22,7 +63,7 @@
 // Step 2. reach the round after which B was finalized
 // ---------------------------------------------------
 //
-// The reply for round r+1 will contain a set S of either prevotes or precommites
+// The reply for round r+1 will contain a set S of either prevotes or precommits
 // - If precommits: take union with precommits in commit msg for B to find equivocators.
 // - If prevotes: ask the precommitters for B.
 //
@@ -32,28 +73,120 @@
 // Q: Ask all precommitters in the in commit msg for B, which prevotes have you seen?
 // A: A set T of prevotes with a supermajority for B.
 //    Take the union with S and find the equivocators.
-
-// Definitions
-// ===========
-
-// GHOST Function
-// --------------
-// The function g(S) takes the set of votes and returns the block B with the highest block number
-// such that S has a supermajority for B.
-
-// Estimate
-// --------
-// E_{r,v} is v's estimate of what might have been finalized in round r, given by the last block in
-// the chain with head g(V_{r,v}) for which it is possible for C_{r,v} to have a supermajority.
-
-// Completable
-// -----------
-// If either E_{r,v} < g(V_{r,v}) or it is impossible for C_{r,v} to have a supermajority for any
-// children of g(V_{r,v}), then we say that v sees that round r as completable.
 //
-// In other words, when E_{r,v} contains everything that could have been finalized in round r.
+// Example
+// =======
+//
+// Consider the set of voters V = {a, b, c, d} and the set of blocks
+//
+// 	0 -> 1 -> 2 -> 3 -> 4
+//        \-> 5 -> 6 -> 7 -> 8
+//
+// which has two heads. We now lay out the 3 grandpa rounds for this, where 2 out of the 4 voters
+// manage to partition the voting set long enough to finalize blocks on both forks.
+//
+// - Round 0: genesis.
+//
+// - Round 1: vote on each side of the fork and the finalize the common ancestor of both.
+//
+// 	V_1 = (2, 2, 5, 5)
+//  C_1 = (1, 1, 1, 1)
+//
+// Broadcast commit message for finalizing block 1 in round 1.
+//
+// - Round 2:
+//
+// We assume that the set of voters are partitioned into two sets:
+//
+// 	{a, b, c}
+//	{a, b, d}
+//
+// with a and b in the overlapping set, meaning that c and d are not communicating. This allows a
+// and b to control the voting by presenting different votes to c and d.
+// The first group finalizes the first fork
+//
+// 	V_{2,1} = (4, 4, 2, _)
+//  C_{2,1} = (2, 2, 2, _)
+//
+// and broadcasts a commit message for finalizing block 2 in round 2.
+// The second group does not finalize anything
+//
+// 	V_{2,2} = (1, 1, _, 5)
+//  C_{2,2} = (1, 1, _, 1)
+//
+// - Round 3:
+//
+// The first group does not finalize anything
+//
+// 	V_{3,1} = (4, 4, 2, _)
+//  C_{3,1} = (2, 2, 2, _)
+//
+// The second group finalizes the second fork
+//
+// 	V_{3,2} = (8, 8, _, 8)
+//  C_{3,2} = (8, 8, _, 8)
+//
+// and broadcasts a commit message for finalizing block 8 in round 3.
+//
+// After these rounds we now have a situation where we sent valid commit messages finalizing blocks
+// on both forks of the chain. We now illustrate the steps needed to uncover the equivocating voters.
+//
+// - Step 0: detect that block 2 and 8 on different branches are finalized.
+//
+//  We receive commits for both finalized blocks, and see that one is not the a common ancestor of
+//  the other.
+//
+// - Step 1: (not applicable since we are at round r+1 already)
+//
+// - Step 2:
+//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
+//     precommitting for 8?
+//
+// (NOTE: we are only asking the voters that precomitted for 8, so (a, b, _, d)).
+//
+// Alternative 1:
+//
+//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
+//     block 2 in round 2.
+//
+// Responses
+//  S_a = {1, 1, _, 1}
+//  S_b = {1, 1, _, 1}
+//  S_d = {1, 1, _, 1}
+//
+// (NOTE: "a" and "b" chooses to not send the precommits it saw as part of group 1 as that would
+// not have been a valid reply.)
+//
+// Take union with precommits in commit message for block 2 to find equivocators.
+// 	{4, 4, 4, _} U {1, 1, _, 1} => a and b appears twice, they *equivocated*!
+//
+// Alternative 2:
+// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
+//  A: A set of prevotes for round 2.
+//
+//  S_a = {1, 1, _, 5}
+//  S_b = {1, 1, _, 5}
+//  S_d = {1, 1, _, 5}
+//
+// Step 3.
+//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
+//     prevotes have you seen?
+//  A: This is voters {a, b, c, _}
+//
+//  T_a = {4, 4, 2, _}
+//  T_b = {4, 4, 2, _}
+//  T_c = {4, 4, 2, _}
+//
+// Take the union S U T
+//
+//  (1, 1, _, 5) U (4, 4, 2, _)  => a and b occurs twice and *equivocated*.
+//
+// References
+// ==========
+//
+// [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
+//      https://arxiv.org/pdf/2007.01560.pdf
 
-// E_{r,v} having supermajority => E_{r,v} < g(V_{r,v}).
 
 use crate::block::Block;
 use crate::chain::Chain;
