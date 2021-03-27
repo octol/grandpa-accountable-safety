@@ -313,14 +313,14 @@ fn unsafe_chain_scenario_from_paper() {
 
 	let s = round2_2.precommits;
 
-	for precommit in commit2_1.precommits {
+	for precommit in &commit2_1.precommits {
 		let equivocated_votes: Vec<_> = s
 			.iter()
 			.filter(|pre| pre.id == precommit.id)
 			.collect();
 
 		if !equivocated_votes.is_empty() {
-			print!("Equivocation detected by {} for {}", precommit.id, precommit.target_number);
+			print!("Precommit equivocation detected by {} for {}", precommit.id, precommit.target_number);
 			equivocated_votes.iter().for_each(|e| {
 				print!(", {}", e.target_number);
 			});
@@ -335,7 +335,9 @@ fn unsafe_chain_scenario_from_paper() {
 	//  S_a = {1, 1, _, 5}
 	//  S_b = {1, 1, _, 5}
 	//  S_d = {1, 1, _, 5}
-	//
+
+	let s = round2_2.prevotes;
+
 	// Step 3.
 	//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
 	//     prevotes have you seen?
@@ -344,11 +346,30 @@ fn unsafe_chain_scenario_from_paper() {
 	//  T_a = {4, 4, 2, _}
 	//  T_b = {4, 4, 2, _}
 	//  T_c = {4, 4, 2, _}
+
+	let voters: Vec<_> = commit2_1.precommits.iter().map(|p| p.id).collect();
+	let t = round2_1.prevotes;
+
 	//
 	// Take the union S U T
 	//
 	//  {1, 1, _, 5} U {4, 4, 2, _}  => "a" and "b" occurs twice and equivocated
 	//
+
+	for prevote in &t {
+		let equivocated_votes: Vec<_> = s
+			.iter()
+			.filter(|pre| pre.id == prevote.id)
+			.collect();
+
+		if !equivocated_votes.is_empty() {
+			print!("Prevote equivocation detected by {} for {}", prevote.id, prevote.target_number);
+			equivocated_votes.iter().for_each(|e| {
+				print!(", {}", e.target_number);
+			});
+			print!("\n");
+		}
+	}
 }
 
 fn create_chain() -> Chain {
