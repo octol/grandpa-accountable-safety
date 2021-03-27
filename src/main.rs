@@ -188,6 +188,8 @@
 //      https://arxiv.org/pdf/2007.01560.pdf
 
 
+use std::collections::{HashMap, HashSet};
+
 use crate::block::Block;
 use crate::chain::Chain;
 use crate::voting::{Commit, VoterSet, VotingRound};
@@ -241,7 +243,7 @@ fn unsafe_chain_scenario_from_paper() {
 	let mut round1 = VotingRound::new(1, voter_set.clone());
 	round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
 	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
-	let _commit1 = Commit::new(1, round1.precommits.clone());
+	let commit1 = Commit::new(1, round1.precommits.clone());
 	chain.finalize_block(1);
 
 	// Round 2:
@@ -250,7 +252,7 @@ fn unsafe_chain_scenario_from_paper() {
 	let mut round2_1 = VotingRound::new(2, voter_set.clone());
 	round2_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
 	round2_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
-	let _commit2_1 = Commit::new(2, round2_1.precommits.clone());
+	let commit2_1 = Commit::new(2, round2_1.precommits.clone());
 	chain.finalize_block(2);
 
 	// The second group "2" does not finalize anything
@@ -269,7 +271,7 @@ fn unsafe_chain_scenario_from_paper() {
 	let mut round3_2 = VotingRound::new(3, voter_set.clone());
 	round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
 	round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
-	let _commit3_2 = Commit::new(8, round3_1.precommits.clone());
+	let commit3_2 = Commit::new(8, round3_1.precommits.clone());
 	chain.finalize_block(8);
 
 	// Query voter(s)
@@ -296,13 +298,36 @@ fn unsafe_chain_scenario_from_paper() {
 	//  S_a = {1, 1, _, 1}
 	//  S_b = {1, 1, _, 1}
 	//  S_d = {1, 1, _, 1}
-	//
+
+	let s: HashMap<_, _> = round2_2
+		.precommits
+		.iter()
+		.map(|pre| (pre.id, pre.target_number))
+		.collect();
+
 	// (NOTE: "a" and "b" chooses to not send the precommits it saw as part of group 1 as that would
 	// not have been a valid reply.)
 	//
 	// Take union with precommits in commit message for block 2 to find equivocators.
 	// 	{4, 4, 4, _} U {1, 1, _, 1} => "a" and "b" appears twice, they *equivocated*!
-	//
+
+	let s = round2_2.precommits;
+
+	for precommit in commit2_1.precommits {
+		let equivocated_votes: Vec<_> = s
+			.iter()
+			.filter(|pre| pre.id == precommit.id)
+			.collect();
+
+		if !equivocated_votes.is_empty() {
+			print!("Equivocation detected by {} for {}", precommit.id, precommit.target_number);
+			equivocated_votes.iter().for_each(|e| {
+				print!(", {}", e.target_number);
+			});
+			print!("\n");
+		}
+	}
+
 	// Alternative 2:
 	// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
 	//  A: A set of prevotes for round 2.

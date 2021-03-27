@@ -73,7 +73,7 @@ impl Prevote {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Precommit {
 	pub target_number: BlockNumber,
 	pub id: VoterId,
@@ -86,8 +86,8 @@ impl Precommit {
 }
 
 pub struct Commit {
-	target_number: BlockNumber,
-	precommits: Vec<Precommit>,
+	pub target_number: BlockNumber,
+	pub precommits: Vec<Precommit>,
 }
 
 impl Commit {
