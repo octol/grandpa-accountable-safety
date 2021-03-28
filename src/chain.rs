@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
-use crate::block::{Block, BlockNumber};
+use crate::{block::{Block, BlockNumber}, voting::Commit};
 
 #[derive(Debug)]
 pub struct Chain {
 	head: BlockNumber,
 	finalized: BlockNumber,
 	blocks: HashMap<BlockNumber, Block>,
+	commits: HashMap<BlockNumber, Commit>,
 }
 
 impl Chain {
@@ -21,6 +22,7 @@ impl Chain {
 			head: blocks[&0].number,
 			finalized: blocks[&0].number,
 			blocks,
+			commits: Default::default(),
 		}
 	}
 
@@ -38,8 +40,10 @@ impl Chain {
 		}
 	}
 
-	pub fn finalize_block(&mut self, block: BlockNumber) {
+	pub fn finalize_block(&mut self, block: BlockNumber, commit: Commit) {
 		self.finalized = block;
+		assert_eq!(block, commit.target_number);
+		assert!(matches!(self.commits.insert(block, commit), None));
 	}
 
 	pub fn block_height(&self, block: BlockNumber) -> u32 {
@@ -60,5 +64,28 @@ impl Chain {
 
 	pub fn head(&self) -> &Block {
 		self.blocks.get(&self.head).unwrap()
+	}
+
+	pub fn commit_for_block(&self, block: BlockNumber) -> Option<&Commit> {
+		self.commits.get(&block)
+	}
+
+	pub fn is_ancestor(&self, b0: BlockNumber, b1: BlockNumber) -> bool {
+		self.block_is_ancestor(b0, b1) || self.block_is_ancestor(b1, b0)
+	}
+
+	fn block_is_ancestor(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
+		const MAX_BLOCK_LENGTH: u32 = 10000;
+		let mut length = 0;
+
+		let mut block = self.blocks.get(&block).unwrap();
+		while !block.is_genesis() && length < MAX_BLOCK_LENGTH {
+			if block.parent == ancestor {
+				return true;
+			}
+			block = self.blocks.get(&block.parent).unwrap();
+			length += 1;
+		}
+		false
 	}
 }

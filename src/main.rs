@@ -187,9 +187,6 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
-
-use std::collections::{HashMap, HashSet};
-
 use crate::block::Block;
 use crate::chain::Chain;
 use crate::voting::{Commit, VoterSet, VotingRound};
@@ -218,15 +215,15 @@ fn safe_chain() {
 	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
 	// g(C) = 1
 	// Broadcast commit for B = g(C) = 1
-	let _commit_1 = Commit::new(1, round1.precommits.clone());
-	chain.finalize_block(1);
+	let commit_1 = Commit::new(1, round1.precommits.clone());
+	chain.finalize_block(1, commit_1);
 
 	// Round 2
 	let mut round2 = VotingRound::new(2, voter_set.clone());
 	round2.prevote(&[(4, "a"), (8, "b"), (8, "c"), (8, "d")]);
 	round2.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
-	let _commit_2 = Commit::new(8, round2.precommits.clone());
-	chain.finalize_block(8);
+	let commit_2 = Commit::new(8, round2.precommits.clone());
+	chain.finalize_block(8, commit_2);
 }
 
 // The idea in the scenario is that we will get conflicting results from the commit message and the
@@ -243,8 +240,8 @@ fn unsafe_chain_scenario_from_paper() {
 	let mut round1 = VotingRound::new(1, voter_set.clone());
 	round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
 	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
-	let commit1 = Commit::new(1, round1.precommits.clone());
-	chain.finalize_block(1);
+	let commit = Commit::new(1, round1.precommits.clone());
+	chain.finalize_block(1, commit);
 
 	// Round 2:
 	// Split into two: ("a", "b", "c") and ("a", "b", "d")
@@ -253,7 +250,7 @@ fn unsafe_chain_scenario_from_paper() {
 	round2_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
 	round2_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
 	let commit2_1 = Commit::new(2, round2_1.precommits.clone());
-	chain.finalize_block(2);
+	chain.finalize_block(2, commit2_1.clone());
 
 	// The second group "2" does not finalize anything
 	let mut round2_2 = VotingRound::new(2, voter_set.clone());
@@ -272,7 +269,7 @@ fn unsafe_chain_scenario_from_paper() {
 	round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
 	round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
 	let commit3_2 = Commit::new(8, round3_1.precommits.clone());
-	chain.finalize_block(8);
+	chain.finalize_block(8, commit3_2);
 
 	// Query voter(s)
 	//
@@ -280,6 +277,8 @@ fn unsafe_chain_scenario_from_paper() {
 	//
 	//  We receive commits for both finalized blocks, commit2_1 and commit3_2, and see that one is
 	//  not the a common ancestor of the other.
+	assert!(!chain.is_ancestor(2, 8));
+
 	//
 	// Step 1: (not applicable since we are at round r+1 already)
 	//
@@ -299,19 +298,14 @@ fn unsafe_chain_scenario_from_paper() {
 	//  S_b = {1, 1, _, 1}
 	//  S_d = {1, 1, _, 1}
 
-	let s: HashMap<_, _> = round2_2
-		.precommits
-		.iter()
-		.map(|pre| (pre.id, pre.target_number))
-		.collect();
-
 	// (NOTE: "a" and "b" chooses to not send the precommits it saw as part of group 1 as that would
 	// not have been a valid reply.)
 	//
 	// Take union with precommits in commit message for block 2 to find equivocators.
 	// 	{4, 4, 4, _} U {1, 1, _, 1} => "a" and "b" appears twice, they *equivocated*!
 
-	let s = round2_2.precommits;
+	// let s = &chain.commit_for_block(2).unwrap().precommits;
+	let s = round2_2.precommits.clone();
 
 	for precommit in &commit2_1.precommits {
 		let equivocated_votes: Vec<_> = s

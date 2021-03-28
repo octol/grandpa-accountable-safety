@@ -85,6 +85,7 @@ impl Precommit {
 	}
 }
 
+#[derive(Debug, Clone)]
 pub struct Commit {
 	pub target_number: BlockNumber,
 	pub precommits: Vec<Precommit>,
