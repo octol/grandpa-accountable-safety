@@ -279,7 +279,6 @@ fn unsafe_chain_scenario_from_paper() {
 	//  not the a common ancestor of the other.
 	assert!(!chain.is_ancestor(2, 8));
 
-	//
 	// Step 1: (not applicable since we are at round r+1 already)
 	//
 	// Step 2:
@@ -292,22 +291,10 @@ fn unsafe_chain_scenario_from_paper() {
 	//
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
-	//
-	// Responses
-	//  S_a = {1, 1, _, 1}
-	//  S_b = {1, 1, _, 1}
-	//  S_d = {1, 1, _, 1}
-
-	// (NOTE: "a" and "b" chooses to not send the precommits it saw as part of group 1 as that would
-	// not have been a valid reply.)
-	//
-	// Take union with precommits in commit message for block 2 to find equivocators.
-	// 	{4, 4, 4, _} U {1, 1, _, 1} => "a" and "b" appears twice, they *equivocated*!
-
-	// let s = &chain.commit_for_block(2).unwrap().precommits;
 	let s = round2_2.precommits.clone();
 
-	for precommit in &commit2_1.precommits {
+	// Cross check against precommitters in commit message
+	for precommit in &chain.commit_for_block(2).unwrap().precommits {
 		let equivocated_votes: Vec<_> = s
 			.iter()
 			.filter(|pre| pre.id == precommit.id)
@@ -325,10 +312,6 @@ fn unsafe_chain_scenario_from_paper() {
 	// Alternative 2:
 	// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
 	//  A: A set of prevotes for round 2.
-	//
-	//  S_a = {1, 1, _, 5}
-	//  S_b = {1, 1, _, 5}
-	//  S_d = {1, 1, _, 5}
 
 	let s = round2_2.prevotes;
 
@@ -336,20 +319,11 @@ fn unsafe_chain_scenario_from_paper() {
 	//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
 	//     prevotes have you seen?
 	//  A: This is voters {a, b, c, _}
-	//
-	//  T_a = {4, 4, 2, _}
-	//  T_b = {4, 4, 2, _}
-	//  T_c = {4, 4, 2, _}
 
 	let voters: Vec<_> = commit2_1.precommits.iter().map(|p| p.id).collect();
 	let t = round2_1.prevotes;
 
-	//
-	// Take the union S U T
-	//
-	//  {1, 1, _, 5} U {4, 4, 2, _}  => "a" and "b" occurs twice and equivocated
-	//
-
+	// Crosscheck
 	for prevote in &t {
 		let equivocated_votes: Vec<_> = s
 			.iter()
