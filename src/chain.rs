@@ -70,11 +70,7 @@ impl Chain {
 		self.commits.get(&block)
 	}
 
-	pub fn is_ancestor(&self, b0: BlockNumber, b1: BlockNumber) -> bool {
-		self.block_is_ancestor(b0, b1) || self.block_is_ancestor(b1, b0)
-	}
-
-	fn block_is_ancestor(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
+	pub fn is_ancestor(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
 		const MAX_BLOCK_LENGTH: u32 = 10000;
 		let mut length = 0;
 

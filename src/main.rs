@@ -191,7 +191,7 @@ use std::collections::HashMap;
 
 use crate::block::Block;
 use crate::chain::Chain;
-use crate::voting::{Commit, VoterSet, VotingRound, VotingRounds};
+use crate::voting::{Prevote, Precommit, Commit, VoterSet, VotingRound, VotingRounds};
 
 mod block;
 mod chain;
@@ -214,12 +214,13 @@ fn run_chain_scenario_from_paper() {
 	//  We receive commits for both finalized blocks, commit2_1 and commit3_2, and see that one is
 	//  not the a common ancestor of the other.
 	assert!(!chain.is_ancestor(2, 8));
+	assert!(!chain.is_ancestor(8, 2));
 
 	// Step 1: (not applicable since we are at round r+1 already)
 	//
 	// Step 2:
 	//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
-	//     precommitting for 8?
+	//     precommitting for block 8?
 	//
 	// (NOTE: we are only asking the voters that precomitted for 8, so {a, b, _, d}). (prevoted?)
 	//
@@ -230,21 +231,7 @@ fn run_chain_scenario_from_paper() {
 	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
 	let s = round2_2.precommits.clone();
 
-	// Cross check against precommitters in commit message
-	for precommit in &chain.commit_for_block(2).unwrap().precommits {
-		let equivocated_votes: Vec<_> = s
-			.iter()
-			.filter(|pre| pre.id == precommit.id)
-			.collect();
-
-		if !equivocated_votes.is_empty() {
-			print!("Precommit equivocation detected by {} for {}", precommit.id, precommit.target_number);
-			equivocated_votes.iter().for_each(|e| {
-				print!(", {}", e.target_number);
-			});
-			print!("\n");
-		}
-	}
+	cross_check_precommit_reply_against_commit(s, chain.commit_for_block(2).unwrap().clone());
 
 	// Alternative 2:
 	// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
@@ -257,26 +244,12 @@ fn run_chain_scenario_from_paper() {
 	//     prevotes have you seen?
 	//  A: This is voters {a, b, c, _}
 
-	let commit2_1 = chain.commit_for_block(2).unwrap();
-	let voters: Vec<_> = commit2_1.precommits.iter().map(|p| p.id).collect();
+	// let commit2_1 = chain.commit_for_block(2).unwrap();
+	// let voters: Vec<_> = commit2_1.precommits.iter().map(|p| p.id).collect();
 	let round2_1 = voting_rounds.get(&2).unwrap()[0].clone();
 	let t = round2_1.prevotes;
 
-	// Crosscheck
-	for prevote in &t {
-		let equivocated_votes: Vec<_> = s
-			.iter()
-			.filter(|pre| pre.id == prevote.id)
-			.collect();
-
-		if !equivocated_votes.is_empty() {
-			print!("Prevote equivocation detected by {} for {}", prevote.id, prevote.target_number);
-			equivocated_votes.iter().for_each(|e| {
-				print!(", {}", e.target_number);
-			});
-			print!("\n");
-		}
-	}
+	cross_check_prevote_reply_against_commit(s, t);
 }
 
 fn create_chain_with_two_forks() -> Chain {
@@ -351,6 +324,41 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 	voting_rounds.insert(round3_1.round_number, vec![round3_1, round3_2]);
 
 	(chain, voting_rounds)
+}
+
+fn cross_check_precommit_reply_against_commit(s: Vec<Precommit>, commit: Commit) {
+	// Cross check against precommitters in commit message
+	for precommit in &commit.precommits {
+		let equivocated_votes: Vec<_> = s
+			.iter()
+			.filter(|pre| pre.id == precommit.id)
+			.collect();
+
+		if !equivocated_votes.is_empty() {
+			print!("Precommit equivocation detected by {} for {}", precommit.id, precommit.target_number);
+			equivocated_votes.iter().for_each(|e| {
+				print!(", {}", e.target_number);
+			});
+			print!("\n");
+		}
+	}
+}
+
+fn cross_check_prevote_reply_against_commit(s: Vec<Prevote>, t: Vec<Prevote>) {
+	for prevote in &t {
+		let equivocated_votes: Vec<_> = s
+			.iter()
+			.filter(|pre| pre.id == prevote.id)
+			.collect();
+
+		if !equivocated_votes.is_empty() {
+			print!("Prevote equivocation detected by {} for {}", prevote.id, prevote.target_number);
+			equivocated_votes.iter().for_each(|e| {
+				print!(", {}", e.target_number);
+			});
+			print!("\n");
+		}
+	}
 }
 
 #[cfg(test)]
