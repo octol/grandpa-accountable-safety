@@ -85,7 +85,7 @@ impl Chain {
 		false
 	}
 
-	pub fn includes(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
+	pub fn block_includes(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
 		block == ancestor || self.is_descendent(block, ancestor)
 	}
 }
@@ -124,18 +124,18 @@ mod tests{
 		assert!(!chain.is_descendent(3, 3));
 		assert!(!chain.is_descendent(4, 4));
 
-		assert!(chain.includes(1, 1));
-		assert!(chain.includes(2, 2));
-		assert!(chain.includes(3, 3));
-		assert!(chain.includes(4, 4));
+		assert!(chain.block_includes(1, 1));
+		assert!(chain.block_includes(2, 2));
+		assert!(chain.block_includes(3, 3));
+		assert!(chain.block_includes(4, 4));
 
 		assert!(chain.is_descendent(2, 1));
 		assert!(chain.is_descendent(3, 1));
 		assert!(chain.is_descendent(4, 1));
 
-		assert!(chain.includes(2, 1));
-		assert!(chain.includes(3, 1));
-		assert!(chain.includes(4, 1));
+		assert!(chain.block_includes(2, 1));
+		assert!(chain.block_includes(3, 1));
+		assert!(chain.block_includes(4, 1));
 
 		assert!(!chain.is_descendent(2, 5));
 		assert!(!chain.is_descendent(3, 5));

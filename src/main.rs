@@ -188,6 +188,7 @@
 //      https://arxiv.org/pdf/2007.01560.pdf
 
 use std::{collections::{HashMap, HashSet}};
+use block::BlockNumber;
 use itertools::Itertools;
 use voting::VoterId;
 
@@ -233,32 +234,9 @@ fn run_chain_scenario_from_paper() {
 	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
 	let s = round2_2.precommits.clone();
 
-	{
-		// What are the criteria for it to be a valid reply?
+	validate_precommit_reply(&s, 2, &round2_2.voter_set, &chain);
 
-		// No equivocations
-		let unique_voters: HashSet<VoterId> = s.iter().map(|pre| pre.id).unique().collect();
-		let num_equivocations_in_commit = s.iter().count() - unique_voters.iter().count();
-		assert!(num_equivocations_in_commit == 0);
-
-		// Impossible to have supermajority for block 2 in round 2
-
-		// Count precommit_includes_block(2)
-		let precommits_includes_block = s
-			.iter()
-			.map(|precommit| chain.includes(precommit.target_number, 2))
-			.count();
-
-		// + Add absent votes
-		let num_voters = round2_2.voter_set.voters.len();
-		let absent_voters = round2_2.voter_set.voters.difference(&unique_voters).count();
-
-		// If > 2/3 return true
-		3 * (precommits_includes_block + absent_voters) > 2 * num_voters;
-	}
-	assert!(is_valid_reply(&s));
-
-	cross_check_precommit_reply_against_commit(s, chain.commit_for_block(2).unwrap().clone());
+	cross_check_precommit_reply_against_commit(&s, chain.commit_for_block(2).unwrap().clone());
 
 	// Alternative 2:
 	// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
@@ -279,9 +257,10 @@ fn run_chain_scenario_from_paper() {
 	cross_check_prevote_reply_against_commit(s, t);
 }
 
+// Create a chain with two forks
+//  0 -> 1 -> 2 -> 3 -> 4
+//        \-> 5 -> 6 -> 7 -> 8
 fn create_chain_with_two_forks() -> Chain {
-	// 0 -> 1 -> 2 -> 3 -> 4
-	//       \-> 5 -> 6 -> 7 -> 8
 	let mut chain = Chain::new();
 	chain.add_block(Block::new(1, 0));
 
@@ -301,6 +280,8 @@ fn create_chain_with_two_forks() -> Chain {
 	chain
 }
 
+// Create a chain with two forks with both sides being finalized.
+// The block 2 on is finalized in round 2, and block 8 is finalized in round 3.
 fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 	let mut chain = create_chain_with_two_forks();
 	let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
@@ -353,7 +334,33 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 	(chain, voting_rounds)
 }
 
-fn cross_check_precommit_reply_against_commit(s: Vec<Precommit>, commit: Commit) {
+// Check the validity of a response containing precommits.
+fn validate_precommit_reply(s: &Vec<Precommit>, block: BlockNumber, voter_set: &VoterSet, chain: &Chain) {
+	// No equivocations
+	let unique_voters: HashSet<VoterId> = s.iter().map(|pre| pre.id).unique().collect();
+	let num_equivocations_in_commit = s.iter().count() - unique_voters.iter().count();
+	assert!(num_equivocations_in_commit == 0);
+
+	// Check Impossible to have supermajority for the block
+	let precommits_includes_block = s
+		.iter()
+		.map(|precommit| chain.block_includes(precommit.target_number, block))
+		.count();
+
+	// + Add absent votes
+	let num_voters = voter_set.voters.len();
+	let absent_voters = voter_set.voters.difference(&unique_voters).count();
+
+	dbg!(&precommits_includes_block);
+	dbg!(&absent_voters);
+	dbg!(&num_voters);
+
+	// A valid response has precommits showing it's impossible to have supermajority for the earlier
+	// finalized block on the other branch
+	assert!(!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters));
+}
+
+fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit) {
 	// Cross check against precommitters in commit message
 	for precommit in &commit.precommits {
 		let equivocated_votes: Vec<_> = s
