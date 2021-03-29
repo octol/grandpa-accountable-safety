@@ -187,7 +187,9 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
-use std::collections::HashMap;
+use std::{collections::{HashMap, HashSet}};
+use itertools::Itertools;
+use voting::VoterId;
 
 use crate::block::Block;
 use crate::chain::Chain;
@@ -213,8 +215,8 @@ fn run_chain_scenario_from_paper() {
 	//
 	//  We receive commits for both finalized blocks, commit2_1 and commit3_2, and see that one is
 	//  not the a common ancestor of the other.
-	assert!(!chain.is_ancestor(2, 8));
-	assert!(!chain.is_ancestor(8, 2));
+	assert!(!chain.is_descendent(2, 8));
+	assert!(!chain.is_descendent(8, 2));
 
 	// Step 1: (not applicable since we are at round r+1 already)
 	//
@@ -230,6 +232,31 @@ fn run_chain_scenario_from_paper() {
 	//     block 2 in round 2.
 	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
 	let s = round2_2.precommits.clone();
+
+	{
+		// What are the criteria for it to be a valid reply?
+
+		// No equivocations
+		let unique_voters: HashSet<VoterId> = s.iter().map(|pre| pre.id).unique().collect();
+		let num_equivocations_in_commit = s.iter().count() - unique_voters.iter().count();
+		assert!(num_equivocations_in_commit == 0);
+
+		// Impossible to have supermajority for block 2 in round 2
+
+		// Count precommit_includes_block(2)
+		let precommits_includes_block = s
+			.iter()
+			.map(|precommit| chain.includes(precommit.target_number, 2))
+			.count();
+
+		// + Add absent votes
+		let num_voters = round2_2.voter_set.voters.len();
+		let absent_voters = round2_2.voter_set.voters.difference(&unique_voters).count();
+
+		// If > 2/3 return true
+		3 * (precommits_includes_block + absent_voters) > 2 * num_voters;
+	}
+	assert!(is_valid_reply(&s));
 
 	cross_check_precommit_reply_against_commit(s, chain.commit_for_block(2).unwrap().clone());
 
@@ -359,6 +386,10 @@ fn cross_check_prevote_reply_against_commit(s: Vec<Prevote>, t: Vec<Prevote>) {
 			print!("\n");
 		}
 	}
+}
+
+fn is_valid_reply(s: &Vec<Precommit>) -> bool {
+	true
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::block::BlockNumber;
 
-type VoterId = &'static str;
+pub type VoterId = &'static str;
 
 #[derive(Clone)]
 pub struct VoterSet {

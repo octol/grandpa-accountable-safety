@@ -70,7 +70,7 @@ impl Chain {
 		self.commits.get(&block)
 	}
 
-	pub fn is_ancestor(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
+	pub fn is_descendent(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
 		const MAX_BLOCK_LENGTH: u32 = 10000;
 		let mut length = 0;
 
@@ -83,5 +83,73 @@ impl Chain {
 			length += 1;
 		}
 		false
+	}
+
+	pub fn includes(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
+		block == ancestor || self.is_descendent(block, ancestor)
+	}
+}
+
+#[cfg(test)]
+mod tests{
+	use super::*;
+
+	fn create_test_chain() -> Chain {
+		// 0 -> 1 -> 2 -> 3 -> 4
+		//       \-> 5 -> 6 -> 7 -> 8
+		let mut chain = Chain::new();
+		chain.add_block(Block::new(1, 0));
+
+		// First fork
+		chain.add_block(Block::new(2, 1));
+		chain.add_block(Block::new(3, 2));
+		chain.add_block(Block::new(4, 3));
+
+		// Second, longer, fork
+		chain.add_block(Block::new(5, 1));
+		chain.add_block(Block::new(6, 5));
+		chain.add_block(Block::new(7, 6));
+		chain.add_block(Block::new(8, 7));
+
+		assert_eq!(chain.block_height(4), 4);
+		assert_eq!(chain.block_height(8), 5);
+		chain
+	}
+	#[test]
+	fn is_ancestor() {
+		let chain = create_test_chain();
+
+		assert!(!chain.is_descendent(1, 1));
+		assert!(!chain.is_descendent(2, 2));
+		assert!(!chain.is_descendent(3, 3));
+		assert!(!chain.is_descendent(4, 4));
+
+		assert!(chain.includes(1, 1));
+		assert!(chain.includes(2, 2));
+		assert!(chain.includes(3, 3));
+		assert!(chain.includes(4, 4));
+
+		assert!(chain.is_descendent(2, 1));
+		assert!(chain.is_descendent(3, 1));
+		assert!(chain.is_descendent(4, 1));
+
+		assert!(chain.includes(2, 1));
+		assert!(chain.includes(3, 1));
+		assert!(chain.includes(4, 1));
+
+		assert!(!chain.is_descendent(2, 5));
+		assert!(!chain.is_descendent(3, 5));
+		assert!(!chain.is_descendent(4, 5));
+
+		assert!(chain.is_descendent(5, 1));
+		assert!(chain.is_descendent(6, 1));
+		assert!(chain.is_descendent(7, 1));
+		assert!(chain.is_descendent(8, 1));
+
+		assert!(!chain.is_descendent(5, 2));
+		assert!(!chain.is_descendent(6, 2));
+		assert!(!chain.is_descendent(7, 2));
+		assert!(!chain.is_descendent(8, 2));
+
 	}
 }
