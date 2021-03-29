@@ -233,8 +233,6 @@ fn run_chain_scenario_from_paper() {
 	//     block 2 in round 2.
 	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
 	let s = round2_2.precommits.clone();
-	dbg!(&round2_2);
-
 	validate_precommit_reply(&s, 2, &round2_2.voter_set, &chain);
 
 	cross_check_precommit_reply_against_commit(&s, chain.commit_for_block(2).unwrap().clone());
@@ -336,19 +334,21 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 }
 
 // Check the validity of a response containing precommits.
+// The purpose of the response is to return a set of precommits showing it is impossible to have a
+// supermajority for the given block.
 fn validate_precommit_reply(
-	s: &Vec<Precommit>,
+	response: &Vec<Precommit>,
 	block: BlockNumber,
 	voter_set: &VoterSet,
 	chain: &Chain,
 ) {
 	// No equivocations
-	let unique_voters: HashSet<VoterId> = s.iter().map(|pre| pre.id).unique().collect();
-	let num_equivocations_in_commit = s.iter().count() - unique_voters.iter().count();
+	let unique_voters: HashSet<VoterId> = response.iter().map(|pre| pre.id).unique().collect();
+	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
 	assert!(num_equivocations_in_commit == 0);
 
 	// Check impossible to have supermajority for the block
-	let precommits_includes_block = s
+	let precommits_includes_block = response
 		.iter()
 		.filter(|precommit| chain.block_includes(precommit.target_number, block))
 		.count();
@@ -357,18 +357,13 @@ fn validate_precommit_reply(
 	let num_voters = voter_set.voters.len();
 	let absent_voters = voter_set.voters.difference(&unique_voters).count();
 
-	dbg!(&s);
-	dbg!(&precommits_includes_block);
-	dbg!(&absent_voters);
-	dbg!(&num_voters);
-
 	// A valid response has precommits showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch
 	assert!(!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters));
 }
 
+// Cross check against precommitters in commit message
 fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit) {
-	// Cross check against precommitters in commit message
 	for precommit in &commit.precommits {
 		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == precommit.id).collect();
 
