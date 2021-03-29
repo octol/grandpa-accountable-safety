@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::block::BlockNumber;
 
@@ -21,6 +21,9 @@ impl VoterSet {
 	}
 }
 
+pub type VotingRounds = HashMap<u64, Vec<VotingRound>>;
+
+#[derive(Clone)]
 pub struct VotingRound {
 	pub round_number: u64,
 	pub voter_set: VoterSet,

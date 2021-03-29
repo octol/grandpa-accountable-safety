@@ -187,89 +187,25 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
+use std::collections::HashMap;
+
 use crate::block::Block;
 use crate::chain::Chain;
-use crate::voting::{Commit, VoterSet, VotingRound};
+use crate::voting::{Commit, VoterSet, VotingRound, VotingRounds};
 
 mod block;
 mod chain;
 mod voting;
 
 fn main() {
-	safe_chain();
-	unsafe_chain_scenario_from_paper();
-}
-
-fn safe_chain() {
-	let mut chain = create_chain();
-	let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
-
-	// Round 0: is genesis.
-
-	// Round 1: Round starts when the previous round is completable.
-	let mut round1 = VotingRound::new(1, voter_set.clone());
-	// Prevote for the head of the best chain containing E_0
-	round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
-	// Wait for g(V) >= E_0 = 0
-	// g(V) = 1
-	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
-	// g(C) = 1
-	// Broadcast commit for B = g(C) = 1
-	let commit_1 = Commit::new(1, round1.precommits.clone());
-	chain.finalize_block(1, commit_1);
-
-	// Round 2
-	let mut round2 = VotingRound::new(2, voter_set.clone());
-	round2.prevote(&[(4, "a"), (8, "b"), (8, "c"), (8, "d")]);
-	round2.precommit(&[(8, "a"), (8, "b"), (8, "c"), (8, "d")]);
-	let commit_2 = Commit::new(8, round2.precommits.clone());
-	chain.finalize_block(8, commit_2);
+	run_chain_scenario_from_paper();
 }
 
 // The idea in the scenario is that we will get conflicting results from the commit message and the
 // set of precommits returned when querying the voters. This allows us to identify the
 // equivocators.
-fn unsafe_chain_scenario_from_paper() {
-	let mut chain = create_chain();
-	let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
-
-	// Round 0: is genesis.
-
-	// Round 1: vote on each side of the fork and the finalize the common ancestor of both.
-	// "a" and "b" sees first fork, "c" and "d" seems the second fork.
-	let mut round1 = VotingRound::new(1, voter_set.clone());
-	round1.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
-	round1.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
-	let commit = Commit::new(1, round1.precommits.clone());
-	chain.finalize_block(1, commit);
-
-	// Round 2:
-	// Split into two: ("a", "b", "c") and ("a", "b", "d")
-	// The first group "1" finalizes the first fork
-	let mut round2_1 = VotingRound::new(2, voter_set.clone());
-	round2_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
-	round2_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
-	let commit2_1 = Commit::new(2, round2_1.precommits.clone());
-	chain.finalize_block(2, commit2_1.clone());
-
-	// The second group "2" does not finalize anything
-	let mut round2_2 = VotingRound::new(2, voter_set.clone());
-	round2_2.prevote(&[(1, "a"), (1, "b"), (5, "d")]);
-	round2_2.precommit(&[(1, "a"), (1, "b"), (1, "d")]);
-
-	// Round 3:
-	// The first group "1" does not finalize anything
-	let mut round3_1 = VotingRound::new(3, voter_set.clone());
-	round3_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
-	round3_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
-
-	// The second group "2" finalizes the second fork
-	// "d" has not seen the commit from the first group in round 2.
-	let mut round3_2 = VotingRound::new(3, voter_set.clone());
-	round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
-	round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
-	let commit3_2 = Commit::new(8, round3_1.precommits.clone());
-	chain.finalize_block(8, commit3_2);
+fn run_chain_scenario_from_paper() {
+	let (chain, voting_rounds) = create_chain_with_two_forks_and_equivocations();
 
 	// Query voter(s)
 	//
@@ -291,6 +227,7 @@ fn unsafe_chain_scenario_from_paper() {
 	//
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
+	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
 	let s = round2_2.precommits.clone();
 
 	// Cross check against precommitters in commit message
@@ -320,7 +257,9 @@ fn unsafe_chain_scenario_from_paper() {
 	//     prevotes have you seen?
 	//  A: This is voters {a, b, c, _}
 
+	let commit2_1 = chain.commit_for_block(2).unwrap();
 	let voters: Vec<_> = commit2_1.precommits.iter().map(|p| p.id).collect();
+	let round2_1 = voting_rounds.get(&2).unwrap()[0].clone();
 	let t = round2_1.prevotes;
 
 	// Crosscheck
@@ -340,7 +279,7 @@ fn unsafe_chain_scenario_from_paper() {
 	}
 }
 
-fn create_chain() -> Chain {
+fn create_chain_with_two_forks() -> Chain {
 	// 0 -> 1 -> 2 -> 3 -> 4
 	//       \-> 5 -> 6 -> 7 -> 8
 	let mut chain = Chain::new();
@@ -360,6 +299,58 @@ fn create_chain() -> Chain {
 	assert_eq!(chain.block_height(4), 4);
 	assert_eq!(chain.block_height(8), 5);
 	chain
+}
+
+fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
+	let mut chain = create_chain_with_two_forks();
+	let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
+
+	let mut voting_rounds = HashMap::new();
+
+	// Round 0: is genesis.
+
+	// Round 1: vote on each side of the fork and the finalize the common ancestor of both.
+	// "a" and "b" sees first fork, "c" and "d" seems the second fork.
+	{
+		let mut round = VotingRound::new(1, voter_set.clone());
+		round.prevote(&[(2, "a"), (2, "b"), (5, "c"), (5, "d")]);
+		round.precommit(&[(1, "a"), (1, "b"), (1, "c"), (1, "d")]);
+		let commit = Commit::new(1, round.precommits.clone());
+		chain.finalize_block(1, commit);
+		voting_rounds.insert(round.round_number, vec![round]);
+	}
+
+	// Round 2:
+	// Split into two: ("a", "b", "c") and ("a", "b", "d")
+	// The first group "1" finalizes the first fork
+	let mut round2_1 = VotingRound::new(2, voter_set.clone());
+	round2_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
+	round2_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
+	let commit2_1 = Commit::new(2, round2_1.precommits.clone());
+	chain.finalize_block(2, commit2_1.clone());
+
+	// The second group "2" does not finalize anything
+	let mut round2_2 = VotingRound::new(2, voter_set.clone());
+	round2_2.prevote(&[(1, "a"), (1, "b"), (5, "d")]);
+	round2_2.precommit(&[(1, "a"), (1, "b"), (1, "d")]);
+	voting_rounds.insert(round2_1.round_number, vec![round2_1, round2_2]);
+
+	// Round 3:
+	// The first group "1" does not finalize anything
+	let mut round3_1 = VotingRound::new(3, voter_set.clone());
+	round3_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
+	round3_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
+
+	// The second group "2" finalizes the second fork
+	// "d" has not seen the commit from the first group in round 2.
+	let mut round3_2 = VotingRound::new(3, voter_set.clone());
+	round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
+	round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
+	let commit3_2 = Commit::new(8, round3_1.precommits.clone());
+	chain.finalize_block(8, commit3_2);
+	voting_rounds.insert(round3_1.round_number, vec![round3_1, round3_2]);
+
+	(chain, voting_rounds)
 }
 
 #[cfg(test)]
