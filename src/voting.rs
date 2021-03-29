@@ -4,7 +4,7 @@ use crate::block::BlockNumber;
 
 pub type VoterId = &'static str;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VoterSet {
 	pub voters: HashSet<VoterId>,
 }
@@ -23,7 +23,7 @@ impl VoterSet {
 
 pub type VotingRounds = HashMap<u64, Vec<VotingRound>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct VotingRound {
 	pub round_number: u64,
 	pub voter_set: VoterSet,
@@ -64,7 +64,7 @@ impl VotingRound {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Prevote {
 	pub target_number: BlockNumber,
 	pub id: VoterId,

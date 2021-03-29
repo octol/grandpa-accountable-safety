@@ -187,14 +187,14 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
-use std::{collections::{HashMap, HashSet}};
 use block::BlockNumber;
 use itertools::Itertools;
+use std::collections::{HashMap, HashSet};
 use voting::VoterId;
 
 use crate::block::Block;
 use crate::chain::Chain;
-use crate::voting::{Prevote, Precommit, Commit, VoterSet, VotingRound, VotingRounds};
+use crate::voting::{Commit, Precommit, Prevote, VoterSet, VotingRound, VotingRounds};
 
 mod block;
 mod chain;
@@ -233,6 +233,7 @@ fn run_chain_scenario_from_paper() {
 	//     block 2 in round 2.
 	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
 	let s = round2_2.precommits.clone();
+	dbg!(&round2_2);
 
 	validate_precommit_reply(&s, 2, &round2_2.voter_set, &chain);
 
@@ -335,22 +336,28 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 }
 
 // Check the validity of a response containing precommits.
-fn validate_precommit_reply(s: &Vec<Precommit>, block: BlockNumber, voter_set: &VoterSet, chain: &Chain) {
+fn validate_precommit_reply(
+	s: &Vec<Precommit>,
+	block: BlockNumber,
+	voter_set: &VoterSet,
+	chain: &Chain,
+) {
 	// No equivocations
 	let unique_voters: HashSet<VoterId> = s.iter().map(|pre| pre.id).unique().collect();
 	let num_equivocations_in_commit = s.iter().count() - unique_voters.iter().count();
 	assert!(num_equivocations_in_commit == 0);
 
-	// Check Impossible to have supermajority for the block
+	// Check impossible to have supermajority for the block
 	let precommits_includes_block = s
 		.iter()
-		.map(|precommit| chain.block_includes(precommit.target_number, block))
+		.filter(|precommit| chain.block_includes(precommit.target_number, block))
 		.count();
 
 	// + Add absent votes
 	let num_voters = voter_set.voters.len();
 	let absent_voters = voter_set.voters.difference(&unique_voters).count();
 
+	dbg!(&s);
 	dbg!(&precommits_includes_block);
 	dbg!(&absent_voters);
 	dbg!(&num_voters);
@@ -363,13 +370,13 @@ fn validate_precommit_reply(s: &Vec<Precommit>, block: BlockNumber, voter_set: &
 fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit) {
 	// Cross check against precommitters in commit message
 	for precommit in &commit.precommits {
-		let equivocated_votes: Vec<_> = s
-			.iter()
-			.filter(|pre| pre.id == precommit.id)
-			.collect();
+		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == precommit.id).collect();
 
 		if !equivocated_votes.is_empty() {
-			print!("Precommit equivocation detected by {} for {}", precommit.id, precommit.target_number);
+			print!(
+				"Precommit equivocation detected by {} for {}",
+				precommit.id, precommit.target_number
+			);
 			equivocated_votes.iter().for_each(|e| {
 				print!(", {}", e.target_number);
 			});
@@ -380,13 +387,13 @@ fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit
 
 fn cross_check_prevote_reply_against_commit(s: Vec<Prevote>, t: Vec<Prevote>) {
 	for prevote in &t {
-		let equivocated_votes: Vec<_> = s
-			.iter()
-			.filter(|pre| pre.id == prevote.id)
-			.collect();
+		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == prevote.id).collect();
 
 		if !equivocated_votes.is_empty() {
-			print!("Prevote equivocation detected by {} for {}", prevote.id, prevote.target_number);
+			print!(
+				"Prevote equivocation detected by {} for {}",
+				prevote.id, prevote.target_number
+			);
 			equivocated_votes.iter().for_each(|e| {
 				print!(", {}", e.target_number);
 			});

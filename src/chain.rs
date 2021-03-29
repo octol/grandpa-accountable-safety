@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::{block::{Block, BlockNumber}, voting::Commit};
+use crate::{
+	block::{Block, BlockNumber},
+	voting::Commit,
+};
 
 #[derive(Debug)]
 pub struct Chain {
@@ -91,7 +94,7 @@ impl Chain {
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
 	use super::*;
 
 	fn create_test_chain() -> Chain {
@@ -150,6 +153,5 @@ mod tests{
 		assert!(!chain.is_descendent(6, 2));
 		assert!(!chain.is_descendent(7, 2));
 		assert!(!chain.is_descendent(8, 2));
-
 	}
 }
