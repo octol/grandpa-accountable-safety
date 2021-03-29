@@ -88,6 +88,8 @@ impl Chain {
 		false
 	}
 
+	/// Returns true if the chain leading up to `ancestor` is included in the chain leading up to
+	/// `block`. That is, if `block` is a descendant of `ancestor` or the same block.
 	pub fn block_includes(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
 		block == ancestor || self.is_descendent(block, ancestor)
 	}

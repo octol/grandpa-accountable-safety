@@ -210,6 +210,8 @@ fn main() {
 fn run_chain_scenario_from_paper() {
 	let (chain, voting_rounds) = create_chain_with_two_forks_and_equivocations();
 
+	let last_finalized_round = 3;
+
 	// Query voter(s)
 	//
 	// Step 0: detect that block 2 and 8 on different branches are finalized.
@@ -220,40 +222,55 @@ fn run_chain_scenario_from_paper() {
 	assert!(!chain.is_descendent(8, 2));
 
 	// Step 1: (not applicable since we are at round r+1 already)
-	//
+
+	// ... update this example with one more round so that this step is included ...
+
 	// Step 2:
 	//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
 	//     precommitting for block 8?
 	//
-	// (NOTE: we are only asking the voters that precomitted for 8, so {a, b, _, d}). (prevoted?)
+	// (NOTE: we are only asking the voters that precommitted for 8, so {a, b, _, d}).
+	// (what about prevoted?)
 	//
 	// Alternative 1:
-	//
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
 	let round2_2 = voting_rounds.get(&2).unwrap()[1].clone();
-	let s = round2_2.precommits.clone();
-	validate_precommit_reply(&s, 2, &round2_2.voter_set, &chain);
+	let response_is_precommits = round2_2.precommits.clone();
+	validate_precommit_reply(&response_is_precommits, 2, &round2_2.voter_set, &chain);
 
-	cross_check_precommit_reply_against_commit(&s, chain.commit_for_block(2).unwrap().clone());
+	cross_check_precommit_reply_against_commit(
+		&response_is_precommits,
+		chain.commit_for_block(2).unwrap().clone(),
+	);
 
 	// Alternative 2:
-	// (QUESTION: what is the point of even accepting prevotes as reply to the query?)
 	//  A: A set of prevotes for round 2.
+	//  (QUESTION: what is the point of even accepting prevotes as reply to the query?)
 
-	let s = round2_2.prevotes;
+	let response_is_prevotes = round2_2.prevotes;
 
 	// Step 3.
 	//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
 	//     prevotes have you seen?
-	//  A: This is voters {a, b, c, _}
 
-	// let commit2_1 = chain.commit_for_block(2).unwrap();
-	// let voters: Vec<_> = commit2_1.precommits.iter().map(|p| p.id).collect();
+	let voters_in_commit = chain
+		.commit_for_block(2)
+		.unwrap()
+		.precommits
+		.iter()
+		.map(|p| p.id)
+		.collect::<Vec<_>>();
+
+	// ... ask `voters_in_commit` what prevotes they have seen ...
+
 	let round2_1 = voting_rounds.get(&2).unwrap()[0].clone();
-	let t = round2_1.prevotes;
+	let followup_response_in_prevotes = round2_1.prevotes;
 
-	cross_check_prevote_reply_against_commit(s, t);
+	cross_check_prevote_reply_against_prevotes_seen(
+		response_is_prevotes,
+		followup_response_in_prevotes,
+	);
 }
 
 // Create a chain with two forks
@@ -380,7 +397,7 @@ fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit
 	}
 }
 
-fn cross_check_prevote_reply_against_commit(s: Vec<Prevote>, t: Vec<Prevote>) {
+fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<Prevote>) {
 	for prevote in &t {
 		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == prevote.id).collect();
 
