@@ -21,18 +21,40 @@ impl VoterSet {
 	}
 }
 
-pub type VotingRounds = HashMap<u64, Vec<VotingRound>>;
+pub type RoundNumber = u64;
+
+#[derive(Clone, Debug)]
+pub struct VotingRounds(HashMap<RoundNumber, Vec<VotingRound>>);
+
+impl VotingRounds {
+	pub fn new() -> Self {
+		Self(HashMap::new())
+	}
+
+    pub fn get(&self, round_number: &RoundNumber) -> Option<&Vec<VotingRound>> {
+		self.0.get(round_number)
+	}
+
+	pub fn add(&mut self, voting_round: VotingRound) {
+		let round_number  = voting_round.round_number;
+		if let Some(mut vr) = self.0.get_mut(&round_number) {
+			vr.push(voting_round)
+		} else {
+			self.0.insert(round_number, vec![voting_round]);
+		}
+	}
+}
 
 #[derive(Clone, Debug)]
 pub struct VotingRound {
-	pub round_number: u64,
+	pub round_number: RoundNumber,
 	pub voter_set: VoterSet,
 	pub prevotes: Vec<Prevote>,
 	pub precommits: Vec<Precommit>,
 }
 
 impl VotingRound {
-	pub fn new(round_number: u64, voter_set: VoterSet) -> Self {
+	pub fn new(round_number: RoundNumber, voter_set: VoterSet) -> Self {
 		Self {
 			round_number,
 			voter_set,

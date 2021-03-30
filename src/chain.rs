@@ -1,14 +1,11 @@
 use std::collections::HashMap;
 
-use crate::{
-	block::{Block, BlockNumber},
-	voting::Commit,
-};
+use crate::{block::{Block, BlockNumber}, voting::{Commit, RoundNumber}};
 
 #[derive(Debug)]
 pub struct Chain {
 	head: BlockNumber,
-	finalized: BlockNumber,
+	last_finalized: BlockNumber,
 	blocks: HashMap<BlockNumber, Block>,
 	commits: HashMap<BlockNumber, Commit>,
 }
@@ -23,7 +20,7 @@ impl Chain {
 		blocks.insert(genesis.number, genesis);
 		Self {
 			head: blocks[&0].number,
-			finalized: blocks[&0].number,
+			last_finalized: blocks[&0].number,
 			blocks,
 			commits: Default::default(),
 		}
@@ -43,8 +40,8 @@ impl Chain {
 		}
 	}
 
-	pub fn finalize_block(&mut self, block: BlockNumber, commit: Commit) {
-		self.finalized = block;
+	pub fn finalize_block(&mut self, block: BlockNumber, round_number: RoundNumber, commit: Commit) {
+		self.last_finalized = block;
 		assert_eq!(block, commit.target_number);
 		assert!(matches!(self.commits.insert(block, commit), None));
 	}
@@ -67,6 +64,10 @@ impl Chain {
 
 	pub fn head(&self) -> &Block {
 		self.blocks.get(&self.head).unwrap()
+	}
+
+	pub fn last_finalized(&self) -> BlockNumber {
+		self.last_finalized
 	}
 
 	pub fn commit_for_block(&self, block: BlockNumber) -> Option<&Commit> {
