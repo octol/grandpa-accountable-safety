@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 
-use crate::{block::{Block, BlockNumber}, voting::{Commit, RoundNumber}};
+use crate::{
+	block::{Block, BlockNumber},
+	voting::{Commit, RoundNumber},
+};
 
 #[derive(Debug)]
 pub struct Chain {
-	head: BlockNumber,
-	last_finalized: BlockNumber,
 	blocks: HashMap<BlockNumber, Block>,
 	commits: HashMap<BlockNumber, Commit>,
+	finalized_rounds: HashMap<BlockNumber, RoundNumber>,
 }
 
 impl Chain {
@@ -19,10 +21,9 @@ impl Chain {
 		};
 		blocks.insert(genesis.number, genesis);
 		Self {
-			head: blocks[&0].number,
-			last_finalized: blocks[&0].number,
 			blocks,
 			commits: Default::default(),
+			finalized_rounds: Default::default(),
 		}
 	}
 
@@ -33,17 +34,24 @@ impl Chain {
 			self.blocks.insert(block.number, block.clone()),
 			None
 		));
-
-		// Update head if the new block has a height height
-		if self.block_height(block.number) > self.head {
-			self.head = block.number;
-		}
 	}
 
-	pub fn finalize_block(&mut self, block: BlockNumber, round_number: RoundNumber, commit: Commit) {
-		self.last_finalized = block;
+	pub fn finalize_block(
+		&mut self,
+		block: BlockNumber,
+		round_number: RoundNumber,
+		commit: Commit,
+	) {
+		// self.last_finalized = block;
 		assert_eq!(block, commit.target_number);
-		assert!(matches!(self.commits.insert(block, commit), None));
+		assert!(matches!(
+			self.commits.insert(block, commit),
+			None
+		));
+		assert!(matches!(
+			self.finalized_rounds.insert(block, round_number),
+			None
+		));
 	}
 
 	pub fn block_height(&self, block: BlockNumber) -> u32 {
@@ -56,18 +64,6 @@ impl Chain {
 		}
 		assert!(height < MAX_HEIGHT, "Maybe a loop");
 		height
-	}
-
-	pub fn height(&self) -> u32 {
-		self.block_height(self.head)
-	}
-
-	pub fn head(&self) -> &Block {
-		self.blocks.get(&self.head).unwrap()
-	}
-
-	pub fn last_finalized(&self) -> BlockNumber {
-		self.last_finalized
 	}
 
 	pub fn commit_for_block(&self, block: BlockNumber) -> Option<&Commit> {

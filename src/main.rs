@@ -190,7 +190,7 @@
 use block::BlockNumber;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
-use voting::VoterId;
+use voting::{RoundNumber, VoterId};
 
 use crate::block::Block;
 use crate::chain::Chain;
@@ -210,17 +210,16 @@ fn main() {
 fn run_chain_scenario_from_paper() {
 	let (chain, voting_rounds) = create_chain_with_two_forks_and_equivocations();
 
-	let last_finalized_block = chain.last_finalized();
-	let last_finalized_round = 3;
-
-	// Query voter(s)
-	//
 	// Step 0: detect that block 2 and 8 on different branches are finalized.
 	//
-	//  We receive commits for both finalized blocks, commit2_1 and commit3_2, and see that one is
-	//  not the a common ancestor of the other.
-	assert!(!chain.is_descendent(2, 8));
-	assert!(!chain.is_descendent(8, 2));
+	//  We receive commits for both finalized blocks, and see that one is not the a common ancestor
+	//  of the other.
+	let finalized0: (RoundNumber, BlockNumber) = (2, 2);
+	let finalized1: (RoundNumber, BlockNumber) = (3, 8);
+	assert!(!chain.is_descendent(finalized0.1, finalized1.1));
+	assert!(!chain.is_descendent(finalized1.1, finalized0.1));
+
+	let round = finalized1.0;
 
 	// Step 1: (not applicable since we are at round r+1 already)
 
@@ -236,7 +235,7 @@ fn run_chain_scenario_from_paper() {
 	// Alternative 1:
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
-	let previous_round = voting_rounds.get(&(last_finalized_round - 1)).unwrap();
+	let previous_round = voting_rounds.get(&(round - 1)).unwrap();
 
 	// ... the response is only from the second voting round ...
 	// ... how do we determine this? ...
@@ -333,7 +332,9 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 		let commit2_1 = Commit::new(2, round2_1.precommits.clone());
 		chain.finalize_block(2, round2_1.round_number, commit2_1.clone());
 		voting_rounds.add(round2_1);
+	}
 
+	{
 		// The second group "2" does not finalize anything
 		let mut round2_2 = VotingRound::new(2, voter_set.clone());
 		round2_2.prevote(&[(1, "a"), (1, "b"), (5, "d")]);
@@ -349,13 +350,15 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 		round3_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
 		round3_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
 		voting_rounds.add(round3_1.clone());
+	}
 
+	{
 		// The second group "2" finalizes the second fork
 		// "d" has not seen the commit from the first group in round 2.
 		let mut round3_2 = VotingRound::new(3, voter_set.clone());
 		round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
 		round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
-		let commit3_2 = Commit::new(8, round3_1.precommits.clone());
+		let commit3_2 = Commit::new(8, round3_2.precommits.clone());
 		chain.finalize_block(8, round3_2.round_number, commit3_2);
 
 		voting_rounds.add(round3_2);
@@ -439,41 +442,27 @@ mod tests {
 	#[test]
 	fn block_height() {
 		let mut chain = Chain::new();
-		assert_eq!(chain.head(), &Block::new(0, 0));
 		chain.add_block(Block::new(1, 0));
-		assert_eq!(chain.head(), &Block::new(1, 0));
 		chain.add_block(Block::new(2, 1));
-		assert_eq!(chain.head(), &Block::new(2, 1));
 		chain.add_block(Block::new(3, 2));
-		assert_eq!(chain.head(), &Block::new(3, 2));
 		chain.add_block(Block::new(4, 3));
-		assert_eq!(chain.head(), &Block::new(4, 3));
 
 		assert_eq!(chain.block_height(4), 4);
-		assert_eq!(chain.height(), 4);
 	}
 
 	#[test]
 	fn fork_updates_head() {
 		let mut chain = Chain::new();
 		chain.add_block(Block::new(1, 0));
-		assert_eq!(chain.head(), &Block::new(1, 0));
 		chain.add_block(Block::new(2, 1));
-		assert_eq!(chain.head(), &Block::new(2, 1));
 		chain.add_block(Block::new(3, 2));
-		assert_eq!(chain.head(), &Block::new(3, 2));
 		chain.add_block(Block::new(4, 3));
-		assert_eq!(chain.head(), &Block::new(4, 3));
 
 		chain.add_block(Block::new(5, 1));
-		assert_eq!(chain.head(), &Block::new(4, 3));
 		chain.add_block(Block::new(6, 5));
-		assert_eq!(chain.head(), &Block::new(4, 3));
 		chain.add_block(Block::new(7, 6));
-		assert_eq!(chain.head(), &Block::new(4, 3));
 		chain.add_block(Block::new(8, 7));
-		assert_eq!(chain.head(), &Block::new(8, 7));
 
-		assert_eq!(chain.height(), 5);
+		assert_eq!(chain.block_height(8), 5);
 	}
 }
