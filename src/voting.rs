@@ -31,15 +31,13 @@ impl VotingRounds {
 		Self(HashMap::new())
 	}
 
-    pub fn get(&self, round_number: &RoundNumber) -> Option<&Vec<VotingRound>> {
+	pub fn get(&self, round_number: &RoundNumber) -> Option<&Vec<VotingRound>> {
 		self.0.get(round_number)
 	}
 
-	// pub fn round_number_for_block
-
 	pub fn add(&mut self, voting_round: VotingRound) {
-		let round_number  = voting_round.round_number;
-		if let Some(mut vr) = self.0.get_mut(&round_number) {
+		let round_number = voting_round.round_number;
+		if let Some(vr) = self.0.get_mut(&round_number) {
 			vr.push(voting_round)
 		} else {
 			self.0.insert(round_number, vec![voting_round]);

@@ -44,10 +44,7 @@ impl Chain {
 	) {
 		// self.last_finalized = block;
 		assert_eq!(block, commit.target_number);
-		assert!(matches!(
-			self.commits.insert(block, commit),
-			None
-		));
+		assert!(matches!(self.commits.insert(block, commit), None));
 		assert!(matches!(
 			self.finalized_rounds.insert(block, round_number),
 			None

@@ -189,8 +189,8 @@
 
 use block::BlockNumber;
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
-use voting::{RoundNumber, VoterId};
+use std::collections::HashSet;
+use voting::VoterId;
 
 use crate::block::Block;
 use crate::chain::Chain;
@@ -199,6 +199,9 @@ use crate::voting::{Commit, Precommit, Prevote, VoterSet, VotingRound, VotingRou
 mod block;
 mod chain;
 mod voting;
+
+const VOTING_GROUP_A: usize = 0;
+const VOTING_GROUP_B: usize = 1;
 
 fn main() {
 	run_chain_scenario_from_paper();
@@ -214,68 +217,123 @@ fn run_chain_scenario_from_paper() {
 	//
 	//  We receive commits for both finalized blocks, and see that one is not the a common ancestor
 	//  of the other.
-	let finalized0: (RoundNumber, BlockNumber) = (2, 2);
-	let finalized1: (RoundNumber, BlockNumber) = (3, 8);
-	assert!(!chain.is_descendent(finalized0.1, finalized1.1));
-	assert!(!chain.is_descendent(finalized1.1, finalized0.1));
+	let first_finalized_block = 2;
+	let second_finalized_block = 8;
+	assert!(!chain.is_descendent(first_finalized_block, second_finalized_block));
+	assert!(!chain.is_descendent(second_finalized_block, first_finalized_block));
 
-	let round = finalized1.0;
+	let mut round = 4;
 
-	// Step 1: (not applicable since we are at round r+1 already)
+	// Step 1: (iterate back until we're at round after the first finalized block)
+	//  Q: Why did the estimate for round 3 in round 4 NOT include block 2 when prevoting or
+	//     precommitting?
+	{
+		let previous_round = voting_rounds.get(&(round - 1)).unwrap();
 
-	// ... update this example with one more round so that this step is included ...
+		// We get either group 0 or 1 voting results in response
 
-	// Step 2:
+		// Group voted as if block 2 was included (and didn't vote for the second fork)
+		// Not really interested in this.
+		let voting_round = previous_round[VOTING_GROUP_A].clone();
+		let response_is_precommits = voting_round.precommits.clone();
+		assert_eq!(
+			precommit_reply_is_valid(
+				&response_is_precommits,
+				first_finalized_block,
+				&voting_round.voter_set,
+				&chain
+			),
+			false
+		);
+
+		// Group voted as if the estimate for the previous round didn't include block 2, so it voted
+		// for the second fork.
+		let voting_round = previous_round[VOTING_GROUP_B].clone();
+		let response_is_precommits = voting_round.precommits.clone();
+		assert_eq!(
+			precommit_reply_is_valid(
+				&response_is_precommits,
+				first_finalized_block,
+				&voting_round.voter_set,
+				&chain
+			),
+			true
+		);
+	}
+
+	// Step 2: (now at the round after the first finalized block)
 	//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
-	//     precommitting for block 8?
+	//     precommitting
 	//
 	// (NOTE: we are only asking the voters that precommitted for 8, so {a, b, _, d}).
 	// (what about prevoted?)
-	//
+
+	round -= 1;
+	let previous_round = voting_rounds.get(&(round - 1)).unwrap();
+	let voting_round = previous_round[VOTING_GROUP_B].clone();
+
 	// Alternative 1:
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
-	let previous_round = voting_rounds.get(&(round - 1)).unwrap();
+	{
+		// ... the response is only from the second voting group ...
+		let response_is_precommits = voting_round.precommits.clone();
+		assert_eq!(
+			precommit_reply_is_valid(
+				&response_is_precommits,
+				first_finalized_block,
+				&voting_round.voter_set,
+				&chain
+			),
+			true,
+		);
 
-	// ... the response is only from the second voting round ...
-	// ... how do we determine this? ...
-
-	let round2_2 = previous_round[1].clone();
-	let response_is_precommits = round2_2.precommits.clone();
-	validate_precommit_reply(&response_is_precommits, 2, &round2_2.voter_set, &chain);
-
-	cross_check_precommit_reply_against_commit(
-		&response_is_precommits,
-		chain.commit_for_block(2).unwrap().clone(),
-	);
+		cross_check_precommit_reply_against_commit(
+			&response_is_precommits,
+			chain
+				.commit_for_block(first_finalized_block)
+				.unwrap()
+				.clone(),
+		);
+	}
 
 	// Alternative 2:
 	//  A: A set of prevotes for round 2.
 	//  (QUESTION: what is the point of even accepting prevotes as reply to the query?)
 
-	let response_is_prevotes = round2_2.prevotes;
+	{
+		let response_is_prevotes = voting_round.prevotes;
 
-	// Step 3.
-	//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
-	//     prevotes have you seen?
+		// Step 3.
+		//  Q: Ask precommitters in commit message for block 2 who voted for blocks in the 2 fork, which
+		//     prevotes have you seen?
 
-	let voters_in_commit = chain
-		.commit_for_block(2)
-		.unwrap()
-		.precommits
-		.iter()
-		.map(|p| p.id)
-		.collect::<Vec<_>>();
+		let voters_in_commit = chain
+			.commit_for_block(2)
+			.unwrap()
+			.precommits
+			.iter()
+			.map(|p| p.id)
+			.collect::<Vec<_>>();
 
-	// ... ask `voters_in_commit` what prevotes they have seen ...
+		// ... ask `voters_in_commit` what prevotes they have seen ...
 
-	let round2_1 = previous_round[0].clone();
-	let followup_response_in_prevotes = round2_1.prevotes;
+		let voting_round_from_other_fork = previous_round[VOTING_GROUP_A].clone();
+		let voters_from_other_fork = voting_round_from_other_fork
+			.precommits
+			.iter()
+			.map(|p| p.id)
+			.collect::<Vec<_>>();
 
-	cross_check_prevote_reply_against_prevotes_seen(
-		response_is_prevotes,
-		followup_response_in_prevotes,
-	);
+		assert_eq!(voters_in_commit, voters_from_other_fork,);
+
+		let response_about_prevotes_seen = voting_round_from_other_fork.prevotes;
+
+		cross_check_prevote_reply_against_prevotes_seen(
+			response_is_prevotes,
+			response_about_prevotes_seen,
+		);
+	}
 }
 
 // Create a chain with two forks
@@ -302,7 +360,8 @@ fn create_chain_with_two_forks() -> Chain {
 }
 
 // Create a chain with two forks with both sides being finalized.
-// The block 2 on is finalized in round 2, and block 8 is finalized in round 3.
+// Block 2 on the first fork is finalized in round 2, and block 8 on the second fork is finalized in
+// round 4.
 fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 	let mut chain = create_chain_with_two_forks();
 	let voter_set = VoterSet::new(&["a", "b", "c", "d"]);
@@ -353,15 +412,32 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 	}
 
 	{
-		// The second group "2" finalizes the second fork
-		// "d" has not seen the commit from the first group in round 2.
+		// The second group "2" does not finalize anything
 		let mut round3_2 = VotingRound::new(3, voter_set.clone());
-		round3_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
-		round3_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
-		let commit3_2 = Commit::new(8, round3_2.precommits.clone());
-		chain.finalize_block(8, round3_2.round_number, commit3_2);
+		round3_2.prevote(&[(1, "a"), (1, "b"), (5, "d")]);
+		round3_2.precommit(&[(1, "a"), (1, "b"), (1, "d")]);
 
 		voting_rounds.add(round3_2);
+	}
+
+	// Round 4:
+	{
+		// The first group "1" does not finalize anything
+		let mut round4_1 = VotingRound::new(4, voter_set.clone());
+		round4_1.prevote(&[(4, "a"), (4, "b"), (2, "c")]);
+		round4_1.precommit(&[(2, "a"), (2, "b"), (2, "c")]);
+		voting_rounds.add(round4_1.clone());
+	}
+
+	{
+		// The second group "2" finalizes the second fork
+		let mut round4_2 = VotingRound::new(4, voter_set.clone());
+		round4_2.prevote(&[(8, "a"), (8, "b"), (8, "d")]);
+		round4_2.precommit(&[(8, "a"), (8, "b"), (8, "d")]);
+		let commit4_2 = Commit::new(8, round4_2.precommits.clone());
+		chain.finalize_block(8, round4_2.round_number, commit4_2);
+
+		voting_rounds.add(round4_2);
 	}
 
 	(chain, voting_rounds)
@@ -370,12 +446,12 @@ fn create_chain_with_two_forks_and_equivocations() -> (Chain, VotingRounds) {
 // Check the validity of a response containing precommits.
 // The purpose of the response is to return a set of precommits showing it is impossible to have a
 // supermajority for the given block.
-fn validate_precommit_reply(
+fn precommit_reply_is_valid(
 	response: &Vec<Precommit>,
 	block: BlockNumber,
 	voter_set: &VoterSet,
 	chain: &Chain,
-) {
+) -> bool {
 	// No equivocations
 	let unique_voters: HashSet<VoterId> = response.iter().map(|pre| pre.id).unique().collect();
 	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
@@ -393,7 +469,7 @@ fn validate_precommit_reply(
 
 	// A valid response has precommits showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch
-	assert!(!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters));
+	!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters)
 }
 
 // Cross check against precommitters in commit message
@@ -403,7 +479,7 @@ fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit
 
 		if !equivocated_votes.is_empty() {
 			print!(
-				"Precommit equivocation detected by {} for {}",
+				"Precommit equivocation detected: voter {} for blocks {}",
 				precommit.id, precommit.target_number
 			);
 			equivocated_votes.iter().for_each(|e| {
@@ -420,7 +496,7 @@ fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<Prevo
 
 		if !equivocated_votes.is_empty() {
 			print!(
-				"Prevote equivocation detected by {} for {}",
+				"Prevote equivocation detected: voter {} for blocks {}",
 				prevote.id, prevote.target_number
 			);
 			equivocated_votes.iter().for_each(|e| {
@@ -429,10 +505,6 @@ fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<Prevo
 			print!("\n");
 		}
 	}
-}
-
-fn is_valid_reply(s: &Vec<Precommit>) -> bool {
-	true
 }
 
 #[cfg(test)]
