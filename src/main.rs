@@ -195,21 +195,79 @@ use voting::VoterId;
 use crate::block::Block;
 use crate::chain::Chain;
 use crate::voting::{Commit, Precommit, Prevote, VoterSet, VotingRound, VotingRounds};
+use crate::voter::Voter;
 
 mod block;
 mod chain;
 mod voting;
+mod voter;
 
 const VOTING_GROUP_A: usize = 0;
 const VOTING_GROUP_B: usize = 1;
 
+const MAX_TICKS: usize = 100;
+
+struct Environment {
+	voters: Vec<Voter>,
+	current_tick: usize,
+}
+
+impl Environment {
+	fn new() -> Self {
+		let mut voters = Vec::new();
+
+		let voter = Voter { id: "Alice".to_string() };
+		voters.push(voter);
+		let voter = Voter { id: "Bob".to_string() };
+		voters.push(voter);
+		let voter = Voter { id: "Carol".to_string() };
+		voters.push(voter);
+		let voter = Voter { id: "Dave".to_string() };
+		voters.push(voter);
+
+		Self {
+			voters,
+			current_tick: 0,
+		}
+	}
+
+	fn tick(&mut self) {
+		self.current_tick += 1;
+	}
+
+	fn completed(&self) {
+		self.current_tick >= MAX_TICKS
+	}
+}
+
 fn main() {
-	run_chain_scenario_from_paper();
+	let mut env = Environment::new();
+	let (chain, voting_rounds) = create_chain_with_two_forks_and_equivocations();
+
+	while !env.completed() {
+		// In a game loop we typically have:
+		// - check input
+		// - update
+		// - render
+		//
+		// In our case maybe it can be something like
+		//
+		// 1. Process inputs
+		//
+		// for voter in voters {
+		//     voter.act(); // this  can also be to respond
+		// }
+		//
+		// 2.
+
+		env.tick();
+	}
 }
 
 // The idea in the scenario is that we will get conflicting results from the commit message and the
 // set of precommits returned when querying the voters. This allows us to identify the
 // equivocators.
+#[allow(unused)]
 fn run_chain_scenario_from_paper() {
 	let (chain, voting_rounds) = create_chain_with_two_forks_and_equivocations();
 
