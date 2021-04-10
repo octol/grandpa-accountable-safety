@@ -1,3 +1,5 @@
+use crate::Chain;
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
 use crate::block::BlockNumber;
@@ -123,6 +125,70 @@ impl Commit {
 		Self {
 			target_number,
 			precommits,
+		}
+	}
+}
+
+// Check the validity of a response containing precommits.
+// The purpose of the response is to return a set of precommits showing it is impossible to have a
+// supermajority for the given block.
+pub fn precommit_reply_is_valid(
+	response: &Vec<Precommit>,
+	block: BlockNumber,
+	voter_set: &VoterSet,
+	chain: &Chain,
+) -> bool {
+	// No equivocations
+	let unique_voters: HashSet<VoterId> = response.iter().map(|pre| pre.id).unique().collect();
+	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
+	assert!(num_equivocations_in_commit == 0);
+
+	// Check impossible to have supermajority for the block
+	let precommits_includes_block = response
+		.iter()
+		.filter(|precommit| chain.block_includes(precommit.target_number, block))
+		.count();
+
+	// + Add absent votes
+	let num_voters = voter_set.voters.len();
+	let absent_voters = voter_set.voters.difference(&unique_voters).count();
+
+	// A valid response has precommits showing it's impossible to have supermajority for the earlier
+	// finalized block on the other branch
+	!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters)
+}
+
+// Cross check against precommitters in commit message
+pub fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit) {
+	for precommit in &commit.precommits {
+		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == precommit.id).collect();
+
+		if !equivocated_votes.is_empty() {
+			print!(
+				"Precommit equivocation detected: voter {} for blocks {}",
+				precommit.id, precommit.target_number
+			);
+			equivocated_votes.iter().for_each(|e| {
+				print!(", {}", e.target_number);
+			});
+			print!("\n");
+		}
+	}
+}
+
+pub fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<Prevote>) {
+	for prevote in &t {
+		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == prevote.id).collect();
+
+		if !equivocated_votes.is_empty() {
+			print!(
+				"Prevote equivocation detected: voter {} for blocks {}",
+				prevote.id, prevote.target_number
+			);
+			equivocated_votes.iter().for_each(|e| {
+				print!(", {}", e.target_number);
+			});
+			print!("\n");
 		}
 	}
 }

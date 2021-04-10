@@ -114,6 +114,34 @@ mod tests {
 		assert_eq!(chain.block_height(8), 5);
 		chain
 	}
+
+	#[test]
+	fn block_height() {
+		let mut chain = Chain::new();
+		chain.add_block(Block::new(1, 0));
+		chain.add_block(Block::new(2, 1));
+		chain.add_block(Block::new(3, 2));
+		chain.add_block(Block::new(4, 3));
+
+		assert_eq!(chain.block_height(4), 4);
+	}
+
+	#[test]
+	fn fork_updates_head() {
+		let mut chain = Chain::new();
+		chain.add_block(Block::new(1, 0));
+		chain.add_block(Block::new(2, 1));
+		chain.add_block(Block::new(3, 2));
+		chain.add_block(Block::new(4, 3));
+
+		chain.add_block(Block::new(5, 1));
+		chain.add_block(Block::new(6, 5));
+		chain.add_block(Block::new(7, 6));
+		chain.add_block(Block::new(8, 7));
+
+		assert_eq!(chain.block_height(8), 5);
+	}
+
 	#[test]
 	fn is_ancestor() {
 		let chain = create_test_chain();
