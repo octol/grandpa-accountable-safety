@@ -77,6 +77,10 @@ impl Chain {
 		self.commits.get(&block)
 	}
 
+	pub fn commits(&self) -> &HashMap<BlockNumber, Commit> {
+		&self.commits
+	}
+
 	pub fn is_descendent(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
 		const MAX_BLOCK_LENGTH: u32 = 10000;
 		let mut length = 0;

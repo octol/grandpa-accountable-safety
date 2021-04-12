@@ -1,6 +1,7 @@
 use crate::Chain;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 
 use crate::block::BlockNumber;
 
@@ -133,6 +134,12 @@ impl Precommit {
 	}
 }
 
+impl Display for Precommit {
+	fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+		write!(f, "Precommit {{ target_number: {}, id: {} }}", self.target_number, self.id)
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct Commit {
 	pub target_number: BlockNumber,
@@ -145,6 +152,17 @@ impl Commit {
 			target_number,
 			precommits,
 		}
+	}
+}
+
+impl Display for Commit {
+	fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+		write!(
+			f,
+			"Commit({}, {{ {} }})",
+			self.target_number,
+			self.precommits.iter().map(|pc| pc.id).format(", ")
+		)
 	}
 }
 

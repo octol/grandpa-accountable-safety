@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::voting::VotingRounds;
 use crate::chain::Chain;
 
@@ -15,6 +17,16 @@ impl Voter {
 			voting_rounds,
 		}
 	}
+
+	pub fn list_commits(&self) {
+		for c in self.chain.commits() {
+			println!("{}", &c.1);
+		}
+	}
 }
 
-
+impl Display for Voter {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+		write!(f, "{}", self.id)
+	}
+}

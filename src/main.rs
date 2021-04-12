@@ -106,9 +106,25 @@ impl Environment {
 
 		let mut voters = Vec::new();
 
-		let chain_a = [(1,0), (2,1), (3,2), (4,3)];
-		let chain_b = [(1,0), (5,1), (6,5), (7,6), (8, 7)];
-		let chain_all: Vec<_> = chain_a.iter().chain(chain_b.iter()).cloned().collect();
+		let chain_common = [(1,0)];
+		let chain_a_fork = [(2,1), (3,2), (4,3)];
+		let chain_b_fork = [(5,1), (6,5), (7,6), (8, 7)];
+		let chain_all: Vec<_> = chain_common
+			.iter()
+			.chain(chain_a_fork.iter())
+			.chain(chain_b_fork.iter())
+			.cloned()
+			.collect();
+		let chain_a: Vec<_> = chain_common
+			.iter()
+			.chain(chain_a_fork.iter())
+			.cloned()
+			.collect();
+		let chain_b: Vec<_> = chain_common
+			.iter()
+			.chain(chain_b_fork.iter())
+			.cloned()
+			.collect();
 
 		{
 			let mut chain = Chain::new_from(&chain_all);
@@ -117,7 +133,6 @@ impl Environment {
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 			voters.push(Voter::new(names[0], chain.clone(), voting_rounds));
 		}
-
 		{
 			let mut chain = Chain::new_from(&chain_all);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
@@ -125,14 +140,12 @@ impl Environment {
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 			voters.push(Voter::new(names[1], chain.clone(), voting_rounds));
 		}
-
 		{
 			let mut chain = Chain::new_from(&chain_a);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			voters.push(Voter::new(names[2], chain, voting_rounds));
 		}
-
 		{
 			let mut chain = Chain::new_from(&chain_b);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
@@ -143,6 +156,13 @@ impl Environment {
 		Self {
 			voters,
 			current_tick: 0,
+		}
+	}
+
+	fn list_commits(&self) {
+		for voter in &self.voters {
+			println!("{}:", voter);
+			voter.list_commits();
 		}
 	}
 
@@ -183,7 +203,7 @@ fn append_voting_rounds_a(
 		round.prevote(&[(4, "Alice"), (4, "Bob"), (2, "Carol")]);
 		round.precommit(&[(2, "Alice"), (2, "Bob"), (2, "Carol")]);
 		let commit = Commit::new(2, round.precommits.clone());
-		chain.finalize_block(2, round.round_number, commit.clone());
+		chain.finalize_block(2, round.round_number, commit);
 		voting_rounds.add(round);
 	}
 	{
@@ -231,6 +251,8 @@ fn append_voting_rounds_b(
 
 fn main() {
 	let mut env = Environment::new();
+
+	env.list_commits();
 
 	while !env.completed() {
 		// In a game loop we typically have:
