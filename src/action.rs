@@ -1,3 +1,6 @@
+use crate::voting::Commit;
+
+#[derive(Debug)]
 pub enum Action {
-	BroadcastCommit(Commit),
+	BroadcastCommits,
 }

@@ -81,8 +81,9 @@
 //      https://arxiv.org/pdf/2007.01560.pdf
 
 use crate::{
+	action::Action,
 	chain::Chain,
-	voter::Voter,
+	voter::{Request, Voter},
 	voting::{VoterSet, VotingRound, VotingRounds, Commit},
 };
 
@@ -93,7 +94,7 @@ mod example;
 mod voter;
 mod voting;
 
-const MAX_TICKS: usize = 100;
+const MAX_TICKS: usize = 20;
 
 struct World {
 	voters: Vec<Voter>,
@@ -132,26 +133,28 @@ impl World {
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[0], chain.clone(), voting_rounds));
+			voters.push(Voter::new(names[0], chain.clone(), voter_set.clone(), voting_rounds));
 		}
 		{
 			let mut chain = Chain::new_from(&chain_all);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[1], chain.clone(), voting_rounds));
+			voters.push(Voter::new(names[1], chain.clone(), voter_set.clone(), voting_rounds));
 		}
 		{
 			let mut chain = Chain::new_from(&chain_a);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[2], chain, voting_rounds));
+			let mut voter = Voter::new(names[2], chain, voter_set.clone(), voting_rounds);
+			voter.add_actions(vec![(10, Action::BroadcastCommits)]);
+			voters.push(voter);
 		}
 		{
 			let mut chain = Chain::new_from(&chain_b);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[3], chain, voting_rounds));
+			voters.push(Voter::new(names[3], chain, voter_set, voting_rounds));
 		}
 
 		Self {
@@ -176,8 +179,21 @@ impl World {
 	}
 
 	fn process_actions(&mut self) {
-		for voter in self.voters {
-			voter.process_actions(self.current_tick);
+		let actions = {
+			let mut actions = Vec::new();
+			for voter in &mut self.voters {
+				let action = voter.process_actions(self.current_tick);
+				actions.extend(action);
+			}
+			actions
+		};
+
+		for action in actions {
+			match action {
+				(id, Request::SendCommit(commit)) => {
+					println!("Sending to id: {}, {}", id, commit);
+				},
+			}
 		}
 	}
 }
@@ -270,6 +286,8 @@ fn main() {
 	//  When Dave sees this it should trigger the algoritm
 	//
 	//  Probably don't need channels, just call methods on each others?
+
+	println!("*** Starting loop ***");
 
 	while !world.completed() {
 		// In a game loop we typically have:
