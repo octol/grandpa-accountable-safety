@@ -21,6 +21,10 @@ impl VoterSet {
 	pub fn is_member(&self, voter: VoterId) -> bool {
 		self.voters.contains(voter)
 	}
+
+	//pub fn members(&self) -> () {
+	//	self.voters.iter()
+	//}
 }
 
 pub type RoundNumber = u64;
@@ -54,16 +58,31 @@ pub struct VotingRound {
 	pub prevotes: Vec<Prevote>,
 	pub precommits: Vec<Precommit>,
 	pub finalized: Option<BlockNumber>,
+	// We might have multiple voting rounds per round when the network is forked. This field is used to disambiguate
+	// them
+	pub tag: u32,
 }
 
 impl VotingRound {
-	pub fn new(round_number: RoundNumber, voter_set: VoterSet) -> Self {
+	pub fn new(round_number: RoundNumber, voter_set: VoterSet,) -> Self {
 		Self {
 			round_number,
 			voter_set,
 			prevotes: Default::default(),
 			precommits: Default::default(),
 			finalized: None,
+			tag: 0,
+		}
+	}
+
+	pub fn new_with_tag(round_number: RoundNumber, voter_set: VoterSet, tag: u32) -> Self {
+		Self {
+			round_number,
+			voter_set,
+			prevotes: Default::default(),
+			precommits: Default::default(),
+			finalized: None,
+			tag,
 		}
 	}
 

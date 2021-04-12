@@ -83,7 +83,7 @@
 use crate::{
 	chain::Chain,
 	voter::Voter,
-	voting::{VoterSet, VotingRound, VotingRounds},
+	voting::{VoterSet, VotingRound, VotingRounds, Commit},
 };
 
 mod block;
@@ -101,24 +101,25 @@ struct Environment {
 
 impl Environment {
 	fn new() -> Self {
+		let names = &["Alice", "Bob", "Carol", "Dave"];
+		let voter_set = VoterSet::new(names);
+
 		let mut voters = Vec::new();
 
-		let voter = Voter {
-			id: "Alice".to_string(),
-		};
-		voters.push(voter);
-		let voter = Voter {
-			id: "Bob".to_string(),
-		};
-		voters.push(voter);
-		let voter = Voter {
-			id: "Carol".to_string(),
-		};
-		voters.push(voter);
-		let voter = Voter {
-			id: "Dave".to_string(),
-		};
-		voters.push(voter);
+		let chain_a = [(1,0), (2,1), (3,2), (4,3)];
+		let chain_b = [(1,0), (5,1), (6,5), (7,6), (8, 7)];
+		let chain: Vec<_> = chain_a.iter().chain(chain_b.iter()).cloned().collect();
+		let mut chain = Chain::new_from(&chain);
+		let mut chain_a = Chain::new_from(&chain_a);
+		let mut chain_b = Chain::new_from(&chain_b);
+
+		let voting_rounds_a = create_voting_rounds_a(&voter_set, &mut chain_a);
+		let voting_rounds_b = create_voting_rounds_b(&voter_set, &mut chain_b);
+
+		voters.push(Voter::new(names[0], chain.clone(), voting_rounds_a.clone()));
+		voters.push(Voter::new(names[1], chain.clone(), voting_rounds_a.clone()));
+		voters.push(Voter::new(names[2], chain_a, voting_rounds_a.clone()));
+		voters.push(Voter::new(names[3], chain_b, voting_rounds_b));
 
 		Self {
 			voters,
@@ -133,6 +134,86 @@ impl Environment {
 	fn completed(&self) -> bool {
 		self.current_tick >= MAX_TICKS
 	}
+}
+
+// Sequence of voting rounds leading to finalizing block 2 on the first fork
+fn create_voting_rounds_a(voter_set: &VoterSet, chain: &mut Chain) -> VotingRounds {
+	let mut voting_rounds = VotingRounds::new();
+	let voting_round_tag = 0;
+
+	{
+		let mut round = VotingRound::new_with_tag(1, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(2, "Alice"), (2, "Bob"), (1, "Carol"), (1, "Dave")]);
+		round.precommit(&[(1, "Alice"), (1, "Bob"), (1, "Carol"), (1, "Dave")]);
+		let commit = Commit::new(1, round.precommits.clone());
+		chain.finalize_block(1, round.round_number, commit);
+		voting_rounds.add(round);
+	}
+
+	{
+		let mut round = VotingRound::new_with_tag(2, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(4, "Alice"), (4, "Bob"), (2, "Carol")]);
+		round.precommit(&[(2, "Alice"), (2, "Bob"), (2, "Carol")]);
+		let commit = Commit::new(2, round.precommits.clone());
+		chain.finalize_block(2, round.round_number, commit.clone());
+		voting_rounds.add(round);
+	}
+
+	{
+		let mut round = VotingRound::new_with_tag(3, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(4, "Alice"), (4, "Bob"), (2, "Carol")]);
+		round.precommit(&[(2, "Alice"), (2, "Bob"), (2, "Carol")]);
+		voting_rounds.add(round.clone());
+	}
+
+	{
+		let mut round = VotingRound::new_with_tag(4, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(4, "Alice"), (4, "Bob"), (2, "Carol")]);
+		round.precommit(&[(2, "Alice"), (2, "Bob"), (2, "Carol")]);
+		voting_rounds.add(round.clone());
+	}
+
+	voting_rounds
+}
+
+// Sequence of voting rounds leading to finalizing block 8 on the second fork
+fn create_voting_rounds_b(voter_set: &VoterSet, chain: &mut Chain) -> VotingRounds {
+	let mut voting_rounds = VotingRounds::new();
+	let voting_round_tag = 0;
+
+	{
+		let mut round = VotingRound::new_with_tag(1, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(2, "Alice"), (2, "Bob"), (1, "Carol"), (1, "Dave")]);
+		round.precommit(&[(1, "Alice"), (1, "Bob"), (1, "Carol"), (1, "Dave")]);
+		let commit = Commit::new(1, round.precommits.clone());
+		chain.finalize_block(1, round.round_number, commit);
+		voting_rounds.add(round);
+	}
+
+	{
+		let mut round = VotingRound::new_with_tag(2, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(1, "Alice"), (1, "Bob"), (5, "Dave")]);
+		round.precommit(&[(1, "Alice"), (1, "Bob"), (1, "Dave")]);
+		voting_rounds.add(round);
+	}
+
+	{
+		let mut round = VotingRound::new_with_tag(3, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(1, "Alice"), (1, "Bob"), (5, "Dave")]);
+		round.precommit(&[(1, "Alice"), (1, "Bob"), (1, "Dave")]);
+		voting_rounds.add(round);
+	}
+
+	{
+		let mut round = VotingRound::new_with_tag(4, voter_set.clone(), voting_round_tag);
+		round.prevote(&[(8, "Alice"), (8, "Bob"), (8, "Dave")]);
+		round.precommit(&[(8, "Alice"), (8, "Bob"), (8, "Dave")]);
+		let commit = Commit::new(8, round.precommits.clone());
+		chain.finalize_block(8, round.round_number, commit);
+		voting_rounds.add(round);
+	}
+
+	voting_rounds
 }
 
 fn main() {

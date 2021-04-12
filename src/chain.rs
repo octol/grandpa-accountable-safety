@@ -5,7 +5,7 @@ use crate::{
 	voting::{Commit, RoundNumber},
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Chain {
 	blocks: HashMap<BlockNumber, Block>,
 	commits: HashMap<BlockNumber, Commit>,
@@ -25,6 +25,16 @@ impl Chain {
 			commits: Default::default(),
 			finalized_rounds: Default::default(),
 		}
+	}
+
+	pub fn new_from(blocks: &[(BlockNumber, BlockNumber)]) -> Self {
+		let mut chain = Chain::new();
+
+		for b in blocks {
+			chain.add_block(Block::new(b.0, b.1));
+		}
+
+		chain
 	}
 
 	pub fn add_block(&mut self, block: Block) {
