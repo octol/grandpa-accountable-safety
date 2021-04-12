@@ -1,12 +1,15 @@
+use std::collections::VecDeque;
 use std::fmt::Display;
 
 use crate::voting::VotingRounds;
 use crate::chain::Chain;
+use crate::action::Action;
 
 pub struct Voter {
 	pub id: String,
 	pub chain: Chain,
 	pub voting_rounds: VotingRounds,
+	pub actions: VecDeque<(usize, Action)>,
 }
 
 impl Voter {
@@ -15,6 +18,7 @@ impl Voter {
 			id: id.to_string(),
 			chain,
 			voting_rounds,
+			actions: Default::default(),
 		}
 	}
 
@@ -22,6 +26,12 @@ impl Voter {
 		for c in self.chain.commits() {
 			println!("{}", &c.1);
 		}
+	}
+
+	pub fn process_actions(&self, current_tick: usize) {
+		if let Some = self.actions.front() {
+		}
+		todo!();
 	}
 }
 

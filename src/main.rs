@@ -86,6 +86,7 @@ use crate::{
 	voting::{VoterSet, VotingRound, VotingRounds, Commit},
 };
 
+mod action;
 mod block;
 mod chain;
 mod example;
@@ -173,6 +174,12 @@ impl World {
 	fn completed(&self) -> bool {
 		self.current_tick >= MAX_TICKS
 	}
+
+	fn process_actions(&mut self) {
+		for voter in self.voters {
+			voter.process_actions(self.current_tick);
+		}
+	}
 }
 
 fn create_common_voting_rounds(voter_set: &VoterSet, chain: &mut Chain) -> VotingRounds {
@@ -254,6 +261,16 @@ fn main() {
 
 	world.list_commits();
 
+
+	// PLAN:
+	//  Create queue of "imputs", or "initiatives". A (tick, action).
+	//  Everything else is probably of the form handle_request/response
+	//
+	//  Can start with Carol broadcast her Commit for 2.
+	//  When Dave sees this it should trigger the algoritm
+	//
+	//  Probably don't need channels, just call methods on each others?
+
 	while !world.completed() {
 		// In a game loop we typically have:
 		// - check input
@@ -270,7 +287,7 @@ fn main() {
 		//
 		// 2.
 
-		//env.handle_requests();
+		world.process_actions();
 
 		world.tick();
 	}
