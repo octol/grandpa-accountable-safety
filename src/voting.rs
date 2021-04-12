@@ -21,10 +21,6 @@ impl VoterSet {
 	pub fn is_member(&self, voter: VoterId) -> bool {
 		self.voters.contains(voter)
 	}
-
-	//pub fn members(&self) -> () {
-	//	self.voters.iter()
-	//}
 }
 
 pub type RoundNumber = u64;
@@ -48,6 +44,10 @@ impl VotingRounds {
 		} else {
 			self.0.insert(round_number, vec![voting_round]);
 		}
+	}
+
+	pub fn extend(&mut self, other: VotingRounds) {
+		self.0.extend(other.0);
 	}
 }
 
