@@ -94,12 +94,12 @@ mod voting;
 
 const MAX_TICKS: usize = 100;
 
-struct Environment {
+struct World {
 	voters: Vec<Voter>,
 	current_tick: usize,
 }
 
-impl Environment {
+impl World {
 	fn new() -> Self {
 		let names = &["Alice", "Bob", "Carol", "Dave"];
 		let voter_set = VoterSet::new(names);
@@ -250,11 +250,11 @@ fn append_voting_rounds_b(
 }
 
 fn main() {
-	let mut env = Environment::new();
+	let mut world = World::new();
 
-	env.list_commits();
+	world.list_commits();
 
-	while !env.completed() {
+	while !world.completed() {
 		// In a game loop we typically have:
 		// - check input
 		// - update
@@ -270,6 +270,8 @@ fn main() {
 		//
 		// 2.
 
-		env.tick();
+		//env.handle_requests();
+
+		world.tick();
 	}
 }
