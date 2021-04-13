@@ -82,13 +82,13 @@
 
 use crate::voter::Response;
 use crate::voting::VoterId;
-use std::collections::BTreeMap;
 use crate::{
 	action::Action,
 	chain::Chain,
 	voter::{Request, Voter},
-	voting::{VoterSet, VotingRound, VotingRounds, Commit},
+	voting::{Commit, VoterSet, VotingRound, VotingRounds},
 };
+use std::collections::BTreeMap;
 
 mod action;
 mod block;
@@ -111,9 +111,9 @@ impl World {
 
 		let mut voters = BTreeMap::new();
 
-		let chain_common = [(1,0)];
-		let chain_a_fork = [(2,1), (3,2), (4,3)];
-		let chain_b_fork = [(5,1), (6,5), (7,6), (8, 7)];
+		let chain_common = [(1, 0)];
+		let chain_a_fork = [(2, 1), (3, 2), (4, 3)];
+		let chain_b_fork = [(5, 1), (6, 5), (7, 6), (8, 7)];
 		let chain_all: Vec<_> = chain_common
 			.iter()
 			.chain(chain_a_fork.iter())
@@ -137,7 +137,10 @@ impl World {
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 			let id = names[0];
-			voters.insert(id, Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds));
+			voters.insert(
+				id,
+				Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
+			);
 		}
 		{
 			let mut chain = Chain::new_from(&chain_all);
@@ -145,7 +148,10 @@ impl World {
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 			let id = names[1];
-			voters.insert(id, Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds));
+			voters.insert(
+				id,
+				Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
+			);
 		}
 		{
 			let mut chain = Chain::new_from(&chain_a);
@@ -197,8 +203,11 @@ impl World {
 	fn handle_requests(&mut self, requests: Vec<(String, Request)>) -> Vec<(String, Response)> {
 		let mut responses = Vec::new();
 		for request in requests {
-			let voter = self.voters.get_mut(&*request.0).expect("all requests are to known voters");
-			let response = voter.handle_request(request);
+			let response = self
+				.voters
+				.get_mut(&*request.0)
+				.expect("all requests are to known voters")
+				.handle_request(request);
 			responses.extend(response);
 		}
 		responses
@@ -206,8 +215,10 @@ impl World {
 
 	fn handle_responses(&mut self, responses: Vec<(String, Response)>) {
 		for response in responses {
-			let voter = self.voters.get_mut(&*response.0).expect("all responses are to known voters");
-			voter.handle_response(response);
+			self.voters
+				.get_mut(&*response.0)
+				.expect("all responses are to known voters")
+				.handle_response(response, self.current_tick);
 		}
 	}
 }
@@ -232,7 +243,7 @@ fn create_common_voting_rounds(voter_set: &VoterSet, chain: &mut Chain) -> Votin
 fn append_voting_rounds_a(
 	voting_rounds: &mut VotingRounds,
 	voter_set: &VoterSet,
-	chain: &mut Chain
+	chain: &mut Chain,
 ) {
 	let voting_round_tag = 0;
 	{
@@ -261,7 +272,7 @@ fn append_voting_rounds_a(
 fn append_voting_rounds_b(
 	voting_rounds: &mut VotingRounds,
 	voter_set: &VoterSet,
-	chain: &mut Chain
+	chain: &mut Chain,
 ) {
 	let voting_round_tag = 1;
 	{

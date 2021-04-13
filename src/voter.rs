@@ -1,17 +1,18 @@
+use crate::block::{Block, BlockNumber};
 use crate::VoterId;
-use crate::block::BlockNumber;
 use std::collections::BTreeMap;
-use std::collections::VecDeque;
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::fmt::Display;
 
-use crate::voting::{VoterSet, VotingRounds, Commit};
-use crate::chain::Chain;
 use crate::action::Action;
+use crate::chain::Chain;
+use crate::voting::{Commit, VoterSet, VotingRounds};
 
 #[derive(Debug)]
 pub enum Request {
 	SendCommit(Commit),
+	SendBlock(Block),
 }
 
 #[derive(Debug)]
@@ -28,7 +29,12 @@ pub struct Voter {
 }
 
 impl Voter {
-    pub fn new(id: VoterId, chain: Chain, voter_set: VoterSet, voting_rounds: VotingRounds) -> Self {
+	pub fn new(
+		id: VoterId,
+		chain: Chain,
+		voter_set: VoterSet,
+		voting_rounds: VotingRounds,
+	) -> Self {
 		Self {
 			id: id.to_string(),
 			chain,
@@ -62,12 +68,26 @@ impl Voter {
 		for action in actions {
 			match action.1 {
 				Action::BroadcastCommits => {
+					println!("{}: Broadcasting all our commits to all voters", self.id);
 					for voter in &self.voter_set.voters {
 						if *voter != self.id {
 							for c in self.commits() {
-								requests.push((voter.to_string(), Request::SendCommit(c.1.clone())));
+								requests
+									.push((voter.to_string(), Request::SendCommit(c.1.clone())));
 							}
 						}
+					}
+				}
+				Action::SendBlock(id, block_number) => {
+					println!("{}: Send block {} to {}", self.id, block_number, id);
+					if let Some(block) = self.chain.get_block(block_number) {
+						requests.push((id, Request::SendBlock(block.clone())));
+					} else {
+						println!(
+							"{}: failed to send block {} as it's not in our chain",
+							self.id,
+							block_number
+						);
 					}
 				},
 			}
@@ -78,29 +98,46 @@ impl Voter {
 	pub fn handle_request(&mut self, request: (String, Request)) -> Vec<(String, Response)> {
 		match request.1 {
 			Request::SendCommit(commit) => {
-				println!("{}: received: {}", self.id, commit);
+				if let Some(chain_commit) = self.chain.commit_for_block(commit.target_number) {
+					assert_eq!(&commit, chain_commit);
+					return Default::default();
+				}
+				println!("{}: received {}", self.id, commit);
 
 				if !self.chain.knows_about_block(commit.target_number) {
 					// TODO: re-queue request with a delay
-					println!("{}: requesting block: {}", self.id, commit.target_number);
+					println!("{}: requesting block {}", self.id, commit.target_number);
 					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
 
 				for (_block_number, previous_commit) in self.chain.commits() {
-					if !self.chain.is_descendent(commit.target_number, previous_commit.target_number) {
-						println!("{}: received Commit is not descendent of last finalized", self.id);
+					if !self
+						.chain
+						.is_descendent(commit.target_number, previous_commit.target_number)
+					{
+						println!(
+							"{}: received Commit is not descendent of last finalized",
+							self.id
+						);
 					}
 				}
 			}
+			Request::SendBlock(block) => {
+				if let Some(chain_block) = self.chain.get_block(block.number) {
+					assert_eq!(&block, chain_block);
+					return Default::default();
+				}
+				println!("{}: received {}", self.id, block);
+			},
 		}
 		Default::default()
 	}
 
-	pub fn handle_response(&mut self, response: (String, Response)) {
+	pub fn handle_response(&mut self, response: (String, Response), current_tick: usize) {
 		match response.1 {
 			Response::RequestBlock(block_number) => {
-				todo!();
-			},
+				self.actions.insert(current_tick + 1, Action::SendBlock(response.0, block_number));
+			}
 		}
 	}
 }

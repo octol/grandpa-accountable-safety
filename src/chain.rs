@@ -105,6 +105,10 @@ impl Chain {
 	pub fn knows_about_block(&self, block: BlockNumber) -> bool {
 		self.blocks.contains_key(&block)
 	}
+
+	pub fn get_block(&self, block: BlockNumber) -> Option<&Block> {
+		self.blocks.get(&block)
+	}
 }
 
 #[cfg(test)]

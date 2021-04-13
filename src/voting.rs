@@ -65,7 +65,7 @@ pub struct VotingRound {
 }
 
 impl VotingRound {
-	pub fn new(round_number: RoundNumber, voter_set: VoterSet,) -> Self {
+	pub fn new(round_number: RoundNumber, voter_set: VoterSet) -> Self {
 		Self {
 			round_number,
 			voter_set,
@@ -136,11 +136,15 @@ impl Precommit {
 
 impl Display for Precommit {
 	fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-		write!(f, "Precommit {{ target_number: {}, id: {} }}", self.target_number, self.id)
+		write!(
+			f,
+			"Precommit {{ target_number: {}, id: {} }}",
+			self.target_number, self.id
+		)
 	}
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit {
 	pub target_number: BlockNumber,
 	pub precommits: Vec<Precommit>,
