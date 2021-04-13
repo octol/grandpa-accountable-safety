@@ -196,10 +196,9 @@ impl World {
 		actions
 	}
 
-
 	fn handle_requests(&mut self, requests: Vec<(String, Request)>) {
-		for (id, request) in requests {
-			self.voters.get_mut(&*id).map(|v| v.handle_request(request));
+		for request in requests {
+			self.voters.get_mut(&*request.0).map(|v| v.handle_request(request));
 		}
 	}
 }

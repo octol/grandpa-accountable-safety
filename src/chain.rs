@@ -101,6 +101,10 @@ impl Chain {
 	pub fn block_includes(&self, block: BlockNumber, ancestor: BlockNumber) -> bool {
 		block == ancestor || self.is_descendent(block, ancestor)
 	}
+
+	pub fn knows_about_block(&self, block: BlockNumber) -> bool {
+		self.blocks.contains_key(&block)
+	}
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+use crate::VoterId;
+use crate::block::BlockNumber;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -12,6 +14,11 @@ pub enum Request {
 	SendCommit(Commit),
 }
 
+#[derive(Debug)]
+pub enum Response {
+	RequestBlock(BlockNumber),
+}
+
 pub struct Voter {
 	pub id: String,
 	pub chain: Chain,
@@ -21,7 +28,7 @@ pub struct Voter {
 }
 
 impl Voter {
-    pub fn new(id: &str, chain: Chain, voter_set: VoterSet, voting_rounds: VotingRounds) -> Self {
+    pub fn new(id: VoterId, chain: Chain, voter_set: VoterSet, voting_rounds: VotingRounds) -> Self {
 		Self {
 			id: id.to_string(),
 			chain,
@@ -68,10 +75,17 @@ impl Voter {
 		requests
 	}
 
-	pub fn handle_request(&mut self, request: Request) {
-		match request {
+	pub fn handle_request(&mut self, request: (String, Request)) -> Vec<(String, Response)> {
+		let mut responses = Vec::new();
+		match request.1 {
 			Request::SendCommit(commit) => {
 				println!("{}: received: {}", self.id, commit);
+
+				if !self.chain.knows_about_block(commit.target_number) {
+					println!("{}: requesting block: {}", self.id, commit.target_number);
+					responses.push((request.0, Response::RequestBlock(commit.target_number)));
+					return responses;
+				}
 
 				for (_block_number, previous_commit) in self.chain.commits() {
 					if !self.chain.is_descendent(commit.target_number, previous_commit.target_number) {
@@ -80,33 +94,12 @@ impl Voter {
 				}
 			}
 		}
+		Vec::new()
 	}
 }
 
 impl Display for Voter {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
 		write!(f, "{}", self.id)
-	}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-	use std::collections::BTreeMap;
-
-	#[test]
-	fn split_off_actions() {
-		let mut actions = BTreeMap::new();
-		actions.insert(0, Action::BroadcastCommit);
-		actions.insert(1, Action::BroadcastCommit);
-		actions.insert(2, Action::BroadcastCommit);
-		actions.insert(3, Action::BroadcastCommit);
-
-		let mut a = actions.split_off(&2);
-		std::mem::swap(&mut a, &mut actions);
-
-		for b in a {
-			dbg!(&b.0);
-		}
 	}
 }
