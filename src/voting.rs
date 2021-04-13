@@ -5,21 +5,23 @@ use std::fmt::{Display, Formatter};
 
 use crate::block::BlockNumber;
 
-pub type VoterId = &'static str;
+pub type VoterName = &'static str;
+pub type VoterId = String;
+
 
 #[derive(Clone, Debug)]
 pub struct VoterSet {
-	pub voters: HashSet<VoterId>,
+	pub voters: HashSet<VoterName>,
 }
 
 impl VoterSet {
-	pub fn new(voter_ids: &[VoterId]) -> Self {
+	pub fn new(voter_ids: &[VoterName]) -> Self {
 		Self {
 			voters: voter_ids.into_iter().cloned().collect(),
 		}
 	}
 
-	pub fn is_member(&self, voter: VoterId) -> bool {
+	pub fn is_member(&self, voter: VoterName) -> bool {
 		self.voters.contains(voter)
 	}
 }
@@ -87,7 +89,7 @@ impl VotingRound {
 		}
 	}
 
-	pub fn prevote(&mut self, votes: &[(BlockNumber, VoterId)]) {
+	pub fn prevote(&mut self, votes: &[(BlockNumber, VoterName)]) {
 		let mut votes = votes
 			.into_iter()
 			.map(|(n, id)| {
@@ -98,7 +100,7 @@ impl VotingRound {
 		self.prevotes.append(&mut votes);
 	}
 
-	pub fn precommit(&mut self, votes: &[(BlockNumber, VoterId)]) {
+	pub fn precommit(&mut self, votes: &[(BlockNumber, VoterName)]) {
 		let mut votes = votes
 			.into_iter()
 			.map(|(n, id)| {
@@ -113,11 +115,11 @@ impl VotingRound {
 #[derive(Clone, Debug)]
 pub struct Prevote {
 	pub target_number: BlockNumber,
-	pub id: VoterId,
+	pub id: VoterName,
 }
 
 impl Prevote {
-	pub fn new(target_number: BlockNumber, id: VoterId) -> Self {
+	pub fn new(target_number: BlockNumber, id: VoterName) -> Self {
 		Self { target_number, id }
 	}
 }
@@ -125,11 +127,11 @@ impl Prevote {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Precommit {
 	pub target_number: BlockNumber,
-	pub id: VoterId,
+	pub id: VoterName,
 }
 
 impl Precommit {
-	pub fn new(target_number: BlockNumber, id: VoterId) -> Self {
+	pub fn new(target_number: BlockNumber, id: VoterName) -> Self {
 		Self { target_number, id }
 	}
 }
@@ -180,7 +182,7 @@ pub fn precommit_reply_is_valid(
 	chain: &Chain,
 ) -> bool {
 	// No equivocations
-	let unique_voters: HashSet<VoterId> = response.iter().map(|pre| pre.id).unique().collect();
+	let unique_voters: HashSet<VoterName> = response.iter().map(|pre| pre.id).unique().collect();
 	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
 	assert!(num_equivocations_in_commit == 0);
 

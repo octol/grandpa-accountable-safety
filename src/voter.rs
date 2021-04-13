@@ -1,5 +1,6 @@
-use crate::block::{Block, BlockNumber};
 use crate::VoterId;
+use crate::block::{Block, BlockNumber};
+use crate::VoterName;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -21,7 +22,7 @@ pub enum Response {
 }
 
 pub struct Voter {
-	pub id: String,
+	pub id: VoterId,
 	pub chain: Chain,
 	pub voter_set: VoterSet,
 	pub voting_rounds: VotingRounds,
@@ -30,7 +31,7 @@ pub struct Voter {
 
 impl Voter {
 	pub fn new(
-		id: VoterId,
+		id: VoterName,
 		chain: Chain,
 		voter_set: VoterSet,
 		voting_rounds: VotingRounds,
@@ -60,7 +61,7 @@ impl Voter {
 		self.chain.commits()
 	}
 
-	pub fn process_actions(&mut self, current_tick: usize) -> Vec<(String, Request)> {
+	pub fn process_actions(&mut self, current_tick: usize) -> Vec<(VoterId, Request)> {
 		let mut actions = self.actions.split_off(&current_tick);
 		std::mem::swap(&mut actions, &mut self.actions);
 
@@ -95,7 +96,7 @@ impl Voter {
 		requests
 	}
 
-	pub fn handle_request(&mut self, request: (String, Request)) -> Vec<(String, Response)> {
+	pub fn handle_request(&mut self, request: (VoterId, Request)) -> Vec<(VoterId, Response)> {
 		match request.1 {
 			Request::SendCommit(commit) => {
 				if let Some(chain_commit) = self.chain.commit_for_block(commit.target_number) {
@@ -133,7 +134,7 @@ impl Voter {
 		Default::default()
 	}
 
-	pub fn handle_response(&mut self, response: (String, Response), current_tick: usize) {
+	pub fn handle_response(&mut self, response: (VoterId, Response), current_tick: usize) {
 		match response.1 {
 			Response::RequestBlock(block_number) => {
 				self.actions.insert(current_tick + 1, Action::SendBlock(response.0, block_number));

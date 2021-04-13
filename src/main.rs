@@ -80,8 +80,9 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
-use crate::voter::Response;
 use crate::voting::VoterId;
+use crate::voter::Response;
+use crate::voting::VoterName;
 use crate::{
 	action::Action,
 	chain::Chain,
@@ -100,7 +101,7 @@ mod voting;
 const MAX_TICKS: usize = 20;
 
 struct World {
-	voters: BTreeMap<VoterId, Voter>,
+	voters: BTreeMap<VoterName, Voter>,
 	current_tick: usize,
 }
 
@@ -191,7 +192,7 @@ impl World {
 		self.current_tick >= MAX_TICKS
 	}
 
-	fn process_actions(&mut self) -> Vec<(String, Request)> {
+	fn process_actions(&mut self) -> Vec<(VoterId, Request)> {
 		let mut requests = Vec::new();
 		for (_, voter) in &mut self.voters {
 			let request = voter.process_actions(self.current_tick);
@@ -200,7 +201,7 @@ impl World {
 		requests
 	}
 
-	fn handle_requests(&mut self, requests: Vec<(String, Request)>) -> Vec<(String, Response)> {
+	fn handle_requests(&mut self, requests: Vec<(VoterId, Request)>) -> Vec<(VoterId, Response)> {
 		let mut responses = Vec::new();
 		for request in requests {
 			let response = self
@@ -213,7 +214,7 @@ impl World {
 		responses
 	}
 
-	fn handle_responses(&mut self, responses: Vec<(String, Response)>) {
+	fn handle_responses(&mut self, responses: Vec<(VoterId, Response)>) {
 		for response in responses {
 			self.voters
 				.get_mut(&*response.0)
