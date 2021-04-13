@@ -111,7 +111,7 @@ impl Voter {
 					}
 				}
 				Action::RequeueRequest((sender, request)) => {
-					println!("{}: requeue ({}, {:?})", self.id, sender, request);
+					//println!("{}: requeue ({}, {:?})", self.id, sender, request);
 					messages.push(Message {
 						sender,
 						receiver: self.id.clone(),
@@ -140,9 +140,9 @@ impl Voter {
 
 				if !self.chain.knows_about_block(commit.target_number) {
 					// Requeue request for later, when we hopefully know about the block
-					println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 3, request);
+					//println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 10, request);
 					self.actions
-						.push((current_tick + 3, Action::RequeueRequest(request.clone())));
+						.push((current_tick + 10, Action::RequeueRequest(request.clone())));
 					println!("{}: requesting block {}", self.id, commit.target_number);
 					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
@@ -170,9 +170,9 @@ impl Voter {
 
 				if !self.chain.knows_about_block(block.parent) {
 					// Requeue request for later, when we hopefully know about block
-					println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 3, request);
+					//println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 10, request);
 					self.actions
-						.push((current_tick + 3, Action::RequeueRequest(request.clone())));
+						.push((current_tick + 10, Action::RequeueRequest(request.clone())));
 					println!("{}: requesting block {}", self.id, block.parent);
 					return vec![(request.0, Response::RequestBlock(block.parent))];
 				}

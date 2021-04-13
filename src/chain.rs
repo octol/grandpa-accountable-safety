@@ -109,6 +109,38 @@ impl Chain {
 	pub fn get_block(&self, block: BlockNumber) -> Option<&Block> {
 		self.blocks.get(&block)
 	}
+
+	pub fn get_chain_of_blocks(&self, block: BlockNumber) -> Vec<Block> {
+		const MAX_BLOCK_LENGTH: u32 = 10000;
+		let mut length = 0;
+
+		let mut blocks = Vec::new();
+
+		let mut block = if let Some(block) = self.get_block(block) {
+			if block.is_genesis() {
+				return blocks;
+			}
+			blocks.push(block.clone());
+			block
+		} else {
+			return blocks;
+		};
+
+		while !block.is_genesis() && length < MAX_BLOCK_LENGTH {
+			block = if let Some(block) = self.get_block(block.parent) {
+				if block.is_genesis() {
+					return blocks;
+				}
+				blocks.push(block.clone());
+				block
+			} else {
+				return blocks;
+			};
+			length += 1;
+		}
+
+		blocks
+	}
 }
 
 #[cfg(test)]
@@ -199,5 +231,27 @@ mod tests {
 		assert!(!chain.is_descendent(6, 2));
 		assert!(!chain.is_descendent(7, 2));
 		assert!(!chain.is_descendent(8, 2));
+	}
+
+	#[test]
+	fn get_chain_of_blocks() {
+		let chain = create_test_chain();
+		assert_eq!(
+			chain.get_chain_of_blocks(3),
+			vec![
+				Block {
+					number: 3,
+					parent: 2,
+				},
+				Block {
+					number: 2,
+					parent: 1,
+				},
+				Block {
+					number: 1,
+					parent: 0,
+				},
+			]
+		);
 	}
 }

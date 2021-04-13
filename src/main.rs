@@ -100,7 +100,7 @@ mod example;
 mod voter;
 mod voting;
 
-const MAX_TICKS: usize = 50;
+const MAX_TICKS: usize = 500;
 
 struct World {
 	voters: BTreeMap<VoterId, Voter>,
