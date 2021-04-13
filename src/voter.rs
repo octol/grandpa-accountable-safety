@@ -76,15 +76,14 @@ impl Voter {
 	}
 
 	pub fn handle_request(&mut self, request: (String, Request)) -> Vec<(String, Response)> {
-		let mut responses = Vec::new();
 		match request.1 {
 			Request::SendCommit(commit) => {
 				println!("{}: received: {}", self.id, commit);
 
 				if !self.chain.knows_about_block(commit.target_number) {
+					// TODO: re-queue request with a delay
 					println!("{}: requesting block: {}", self.id, commit.target_number);
-					responses.push((request.0, Response::RequestBlock(commit.target_number)));
-					return responses;
+					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
 
 				for (_block_number, previous_commit) in self.chain.commits() {
@@ -94,7 +93,15 @@ impl Voter {
 				}
 			}
 		}
-		Vec::new()
+		Default::default()
+	}
+
+	pub fn handle_response(&mut self, response: (String, Response)) {
+		match response.1 {
+			Response::RequestBlock(block_number) => {
+				todo!();
+			},
+		}
 	}
 }
 

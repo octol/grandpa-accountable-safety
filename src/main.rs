@@ -80,6 +80,7 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
+use crate::voter::Response;
 use crate::voting::VoterId;
 use std::collections::BTreeMap;
 use crate::{
@@ -185,20 +186,28 @@ impl World {
 	}
 
 	fn process_actions(&mut self) -> Vec<(String, Request)> {
-		let actions = {
-			let mut actions = Vec::new();
-			for (_, voter) in &mut self.voters {
-				let action = voter.process_actions(self.current_tick);
-				actions.extend(action);
-			}
-			actions
-		};
-		actions
+		let mut requests = Vec::new();
+		for (_, voter) in &mut self.voters {
+			let request = voter.process_actions(self.current_tick);
+			requests.extend(request);
+		}
+		requests
 	}
 
-	fn handle_requests(&mut self, requests: Vec<(String, Request)>) {
+	fn handle_requests(&mut self, requests: Vec<(String, Request)>) -> Vec<(String, Response)> {
+		let mut responses = Vec::new();
 		for request in requests {
-			self.voters.get_mut(&*request.0).map(|v| v.handle_request(request));
+			let voter = self.voters.get_mut(&*request.0).expect("all requests are to known voters");
+			let response = voter.handle_request(request);
+			responses.extend(response);
+		}
+		responses
+	}
+
+	fn handle_responses(&mut self, responses: Vec<(String, Response)>) {
+		for response in responses {
+			let voter = self.voters.get_mut(&*response.0).expect("all responses are to known voters");
+			voter.handle_response(response);
 		}
 	}
 }
@@ -291,7 +300,8 @@ fn main() {
 		// - render
 
 		let requests = world.process_actions();
-		world.handle_requests(requests);
+		let responses = world.handle_requests(requests);
+		world.handle_responses(responses);
 
 		world.tick();
 	}
