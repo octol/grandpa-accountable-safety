@@ -80,6 +80,8 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
+use crate::voter::Payload;
+use crate::voter::Message;
 use crate::voting::VoterId;
 use crate::voter::Response;
 use crate::voting::VoterName;
@@ -101,7 +103,7 @@ mod voting;
 const MAX_TICKS: usize = 20;
 
 struct World {
-	voters: BTreeMap<VoterName, Voter>,
+	voters: BTreeMap<VoterId, Voter>,
 	current_tick: usize,
 }
 
@@ -137,9 +139,9 @@ impl World {
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[0];
+			let id = names[0].to_string();
 			voters.insert(
-				id,
+				id.clone(),
 				Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
 			);
 		}
@@ -148,9 +150,9 @@ impl World {
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[1];
+			let id = names[1].to_string();
 			voters.insert(
-				id,
+				id.clone(),
 				Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
 			);
 		}
@@ -158,8 +160,8 @@ impl World {
 			let mut chain = Chain::new_from(&chain_a);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[2];
-			let mut voter = Voter::new(id, chain, voter_set.clone(), voting_rounds);
+			let id = names[2].to_string();
+			let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
 			voter.add_actions(vec![(10, Action::BroadcastCommits)]);
 			voters.insert(id, voter);
 		}
@@ -167,8 +169,8 @@ impl World {
 			let mut chain = Chain::new_from(&chain_b);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[3];
-			voters.insert(id, Voter::new(id, chain, voter_set, voting_rounds));
+			let id = names[3].to_string();
+			voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
 		}
 
 		Self {
@@ -192,34 +194,56 @@ impl World {
 		self.current_tick >= MAX_TICKS
 	}
 
-	fn process_actions(&mut self) -> Vec<(VoterId, Request)> {
+	fn process_actions(&mut self) -> Vec<Message> {
 		let mut requests = Vec::new();
 		for (_, voter) in &mut self.voters {
-			let request = voter.process_actions(self.current_tick);
-			requests.extend(request);
+			let voter_requests = voter
+				.process_actions(self.current_tick)
+				.into_iter()
+				.map(|(receiver, req)| Message {
+					receiver,
+					sender: voter.id.clone(),
+					content: Payload::Request(req),
+				});
+			requests.extend(voter_requests);
 		}
 		requests
 	}
 
-	fn handle_requests(&mut self, requests: Vec<(VoterId, Request)>) -> Vec<(VoterId, Response)> {
+	fn handle_requests(&mut self, requests: Vec<Message>) -> Vec<Message> {
 		let mut responses = Vec::new();
-		for request in requests {
-			let response = self
+		for Message { sender, receiver, content } in requests {
+			let request = match content {
+				Payload::Response(..) => panic!("logic error"),
+				Payload::Request(request) => request,
+			};
+			let voter_responses = self
 				.voters
-				.get_mut(&*request.0)
+				.get_mut(&receiver)
 				.expect("all requests are to known voters")
-				.handle_request(request);
-			responses.extend(response);
+				.handle_request((sender, request))
+				.into_iter()
+				.map(|(response_receiver, res)| Message {
+					receiver: response_receiver,
+					sender: receiver.clone(),
+					content: Payload::Response(res),
+				});
+
+			responses.extend(voter_responses);
 		}
 		responses
 	}
 
-	fn handle_responses(&mut self, responses: Vec<(VoterId, Response)>) {
-		for response in responses {
+	fn handle_responses(&mut self, responses: Vec<Message>) {
+		for Message { sender, receiver, content } in responses {
+			let response = match content {
+				Payload::Request(..) => panic!("logic error"),
+				Payload::Response(response) => response,
+			};
 			self.voters
-				.get_mut(&*response.0)
+				.get_mut(&receiver)
 				.expect("all responses are to known voters")
-				.handle_response(response, self.current_tick);
+				.handle_response((sender, response), self.current_tick);
 		}
 	}
 }

@@ -21,6 +21,19 @@ pub enum Response {
 	RequestBlock(BlockNumber),
 }
 
+#[derive(Debug)]
+pub enum Payload {
+	Request(Request),
+	Response(Response),
+}
+
+#[derive(Debug)]
+pub struct Message {
+	pub sender: VoterId,
+	pub receiver: VoterId,
+	pub content: Payload,
+}
+
 pub struct Voter {
 	pub id: VoterId,
 	pub chain: Chain,
@@ -31,13 +44,13 @@ pub struct Voter {
 
 impl Voter {
 	pub fn new(
-		id: VoterName,
+		id: VoterId,
 		chain: Chain,
 		voter_set: VoterSet,
 		voting_rounds: VotingRounds,
 	) -> Self {
 		Self {
-			id: id.to_string(),
+			id,
 			chain,
 			voter_set,
 			voting_rounds,
@@ -66,8 +79,8 @@ impl Voter {
 		std::mem::swap(&mut actions, &mut self.actions);
 
 		let mut requests = Vec::new();
-		for action in actions {
-			match action.1 {
+		for (_trigger_time, action) in actions {
+			match action {
 				Action::BroadcastCommits => {
 					println!("{}: Broadcasting all our commits to all voters", self.id);
 					for voter in &self.voter_set.voters {
