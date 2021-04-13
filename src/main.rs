@@ -80,16 +80,11 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
-use crate::voter::Message;
-use crate::voter::Payload;
-use crate::voter::Response;
-use crate::voting::VoterId;
-use crate::voting::VoterName;
 use crate::{
 	action::Action,
 	chain::Chain,
-	voter::{Request, Voter},
-	voting::{Commit, VoterSet, VotingRound, VotingRounds},
+	voter::{Message, Payload, Request, Response, Voter},
+	voting::{Commit, VoterId, VoterName, VoterSet, VotingRound, VotingRounds},
 };
 use std::collections::BTreeMap;
 

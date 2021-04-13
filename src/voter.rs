@@ -1,14 +1,14 @@
-use crate::block::{Block, BlockNumber};
-use crate::VoterId;
-use crate::VoterName;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::VecDeque;
-use std::fmt::Display;
-
-use crate::action::Action;
-use crate::chain::Chain;
-use crate::voting::{Commit, VoterSet, VotingRounds};
+use crate::{
+	action::Action,
+	block::{Block, BlockNumber},
+	chain::Chain,
+	voting::{Commit, VoterSet, VotingRounds},
+	VoterId, VoterName,
+};
+use std::{
+	collections::{BTreeMap, HashMap, VecDeque},
+	fmt::Display,
+};
 
 #[derive(Debug, Clone)]
 pub enum Request {
@@ -28,14 +28,14 @@ pub enum Payload {
 }
 
 impl Payload {
-    pub fn request(&self) -> &Request {
+	pub fn request(&self) -> &Request {
 		match self {
 			Payload::Request(request) => request,
 			Payload::Response(..) => panic!("logic error"),
 		}
 	}
 
-    pub fn response(&self) -> &Response {
+	pub fn response(&self) -> &Response {
 		match self {
 			Payload::Request(..) => panic!("logic error"),
 			Payload::Response(response) => response,
