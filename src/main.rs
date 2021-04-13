@@ -80,10 +80,10 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
-use crate::voter::Payload;
 use crate::voter::Message;
-use crate::voting::VoterId;
+use crate::voter::Payload;
 use crate::voter::Response;
+use crate::voting::VoterId;
 use crate::voting::VoterName;
 use crate::{
 	action::Action,
@@ -100,7 +100,7 @@ mod example;
 mod voter;
 mod voting;
 
-const MAX_TICKS: usize = 20;
+const MAX_TICKS: usize = 30;
 
 struct World {
 	voters: BTreeMap<VoterId, Voter>,
@@ -197,14 +197,7 @@ impl World {
 	fn process_actions(&mut self) -> Vec<Message> {
 		let mut requests = Vec::new();
 		for (_, voter) in &mut self.voters {
-			let voter_requests = voter
-				.process_actions(self.current_tick)
-				.into_iter()
-				.map(|(receiver, req)| Message {
-					receiver,
-					sender: voter.id.clone(),
-					content: Payload::Request(req),
-				});
+			let voter_requests = voter.process_actions(self.current_tick);
 			requests.extend(voter_requests);
 		}
 		requests
@@ -212,7 +205,12 @@ impl World {
 
 	fn handle_requests(&mut self, requests: Vec<Message>) -> Vec<Message> {
 		let mut responses = Vec::new();
-		for Message { sender, receiver, content } in requests {
+		for Message {
+			sender,
+			receiver,
+			content,
+		} in requests
+		{
 			let request = match content {
 				Payload::Response(..) => panic!("logic error"),
 				Payload::Request(request) => request,
@@ -221,7 +219,7 @@ impl World {
 				.voters
 				.get_mut(&receiver)
 				.expect("all requests are to known voters")
-				.handle_request((sender, request))
+				.handle_request((sender, request), self.current_tick)
 				.into_iter()
 				.map(|(response_receiver, res)| Message {
 					receiver: response_receiver,
@@ -235,7 +233,12 @@ impl World {
 	}
 
 	fn handle_responses(&mut self, responses: Vec<Message>) {
-		for Message { sender, receiver, content } in responses {
+		for Message {
+			sender,
+			receiver,
+			content,
+		} in responses
+		{
 			let response = match content {
 				Payload::Request(..) => panic!("logic error"),
 				Payload::Response(response) => response,

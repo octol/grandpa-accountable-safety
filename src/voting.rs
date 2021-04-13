@@ -8,7 +8,6 @@ use crate::block::BlockNumber;
 pub type VoterName = &'static str;
 pub type VoterId = String;
 
-
 #[derive(Clone, Debug)]
 pub struct VoterSet {
 	pub voters: HashSet<VoterName>,
