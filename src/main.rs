@@ -335,11 +335,6 @@ fn main() {
 	println!("*** Starting loop ***");
 
 	while !world.completed() {
-		// In a game loop we typically have:
-		// - check input
-		// - update
-		// - render
-
 		let requests = world.process_actions();
 		let responses = world.handle_requests(requests);
 		world.handle_responses(responses);
