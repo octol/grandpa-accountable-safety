@@ -3,7 +3,7 @@ use crate::voting::Commit;
 use crate::Request;
 use crate::VoterId;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Action {
 	BroadcastCommits,
 	SendBlock(VoterId, BlockNumber),

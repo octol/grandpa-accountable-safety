@@ -39,7 +39,7 @@ pub struct Voter {
 	pub chain: Chain,
 	pub voter_set: VoterSet,
 	pub voting_rounds: VotingRounds,
-	pub actions: BTreeMap<usize, Action>,
+	pub actions: Vec<(usize, Action)>,
 }
 
 impl Voter {
@@ -60,7 +60,7 @@ impl Voter {
 
 	pub fn add_actions(&mut self, actions: Vec<(usize, Action)>) {
 		for (tick, action) in actions {
-			self.actions.insert(tick, action);
+			self.actions.push((tick, action));
 		}
 	}
 
@@ -75,8 +75,8 @@ impl Voter {
 	}
 
 	pub fn process_actions(&mut self, current_tick: usize) -> Vec<Message> {
-		let mut actions = self.actions.split_off(&current_tick);
-		std::mem::swap(&mut actions, &mut self.actions);
+		let actions = self.actions.iter().filter(|a| a.0 <= current_tick).cloned().collect::<Vec<_>>();
+		self.actions.retain(|a| a.0 > current_tick);
 
 		let mut messages = Vec::new();
 		for (_trigger_time, action) in actions {
@@ -140,8 +140,9 @@ impl Voter {
 
 				if !self.chain.knows_about_block(commit.target_number) {
 					// Requeue request for later, when we hopefully know about the block
+					println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 3, request);
 					self.actions
-						.insert(current_tick + 1, Action::RequeueRequest(request.clone()));
+						.push((current_tick + 3, Action::RequeueRequest(request.clone())));
 					println!("{}: requesting block {}", self.id, commit.target_number);
 					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
@@ -169,19 +170,15 @@ impl Voter {
 
 				if !self.chain.knows_about_block(block.parent) {
 					// Requeue request for later, when we hopefully know about block
+					println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 3, request);
 					self.actions
-						.insert(current_tick + 1, Action::RequeueRequest(request.clone()));
+						.push((current_tick + 3, Action::RequeueRequest(request.clone())));
 					println!("{}: requesting block {}", self.id, block.parent);
 					return vec![(request.0, Response::RequestBlock(block.parent))];
 				}
 
+				println!("{}: adding block {}", self.id, block);
 				self.chain.add_block(block.clone());
-
-				if !self.chain.knows_about_block(block.parent) {
-					// TODO: re-queue request with a delay
-					println!("{}: requesting block {}", self.id, block.number);
-					return vec![(request.0, Response::RequestBlock(block.number))];
-				}
 			}
 		}
 		Default::default()
@@ -190,10 +187,10 @@ impl Voter {
 	pub fn handle_response(&mut self, response: (VoterId, Response), current_tick: usize) {
 		match response.1 {
 			Response::RequestBlock(block_number) => {
-				self.actions.insert(
+				self.actions.push((
 					current_tick + 1,
 					Action::SendBlock(response.0, block_number),
-				);
+				));
 			}
 		}
 	}

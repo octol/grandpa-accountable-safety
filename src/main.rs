@@ -100,7 +100,7 @@ mod example;
 mod voter;
 mod voting;
 
-const MAX_TICKS: usize = 30;
+const MAX_TICKS: usize = 50;
 
 struct World {
 	voters: BTreeMap<VoterId, Voter>,
@@ -161,16 +161,20 @@ impl World {
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			let id = names[2].to_string();
-			let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
-			voter.add_actions(vec![(10, Action::BroadcastCommits)]);
-			voters.insert(id, voter);
+			voters.insert(id.clone(), Voter::new(id, chain, voter_set.clone(), voting_rounds));
+			//let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
+			//voter.add_actions(vec![(10, Action::BroadcastCommits)]);
+			//voters.insert(id, voter);
 		}
 		{
 			let mut chain = Chain::new_from(&chain_b);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 			let id = names[3].to_string();
-			voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
+			//voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
+			let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
+			voter.add_actions(vec![(10, Action::BroadcastCommits)]);
+			voters.insert(id, voter);
 		}
 
 		Self {
