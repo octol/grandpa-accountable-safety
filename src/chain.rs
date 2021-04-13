@@ -113,7 +113,6 @@ impl Chain {
 	pub fn get_chain_of_blocks(&self, block: BlockNumber) -> Vec<Block> {
 		const MAX_BLOCK_LENGTH: u32 = 10000;
 		let mut length = 0;
-
 		let mut blocks = Vec::new();
 
 		let mut block = if let Some(block) = self.get_block(block) {
@@ -129,16 +128,17 @@ impl Chain {
 		while !block.is_genesis() && length < MAX_BLOCK_LENGTH {
 			block = if let Some(block) = self.get_block(block.parent) {
 				if block.is_genesis() {
-					return blocks;
+					break;
 				}
 				blocks.push(block.clone());
 				block
 			} else {
-				return blocks;
+				break;
 			};
 			length += 1;
 		}
 
+		blocks.reverse();
 		blocks
 	}
 }
@@ -240,16 +240,16 @@ mod tests {
 			chain.get_chain_of_blocks(3),
 			vec![
 				Block {
-					number: 3,
-					parent: 2,
+					number: 1,
+					parent: 0,
 				},
 				Block {
 					number: 2,
 					parent: 1,
 				},
 				Block {
-					number: 1,
-					parent: 0,
+					number: 3,
+					parent: 2,
 				},
 			]
 		);

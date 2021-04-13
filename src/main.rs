@@ -161,7 +161,10 @@ impl World {
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			let id = names[2].to_string();
-			voters.insert(id.clone(), Voter::new(id, chain, voter_set.clone(), voting_rounds));
+			voters.insert(
+				id.clone(),
+				Voter::new(id, chain, voter_set.clone(), voting_rounds),
+			);
 			//let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
 			//voter.add_actions(vec![(10, Action::BroadcastCommits)]);
 			//voters.insert(id, voter);
@@ -215,22 +218,19 @@ impl World {
 			content,
 		} in requests
 		{
-			let request = match content {
-				Payload::Response(..) => panic!("logic error"),
-				Payload::Request(request) => request,
-			};
-			let voter_responses = self
+			let request = content.request();
+			let receiving_voter = self
 				.voters
 				.get_mut(&receiver)
-				.expect("all requests are to known voters")
-				.handle_request((sender, request), self.current_tick)
+				.expect("all requests are to known voters");
+			let voter_responses = receiving_voter
+				.handle_request((sender, request.clone()), self.current_tick)
 				.into_iter()
 				.map(|(response_receiver, res)| Message {
 					receiver: response_receiver,
 					sender: receiver.clone(),
 					content: Payload::Response(res),
 				});
-
 			responses.extend(voter_responses);
 		}
 		responses
@@ -243,14 +243,12 @@ impl World {
 			content,
 		} in responses
 		{
-			let response = match content {
-				Payload::Request(..) => panic!("logic error"),
-				Payload::Response(response) => response,
-			};
-			self.voters
+			let response = content.response();
+			let receiving_voter = self
+				.voters
 				.get_mut(&receiver)
-				.expect("all responses are to known voters")
-				.handle_response((sender, response), self.current_tick);
+				.expect("all responses are to known voters");
+			receiving_voter.handle_response((sender, response.clone()), self.current_tick);
 		}
 	}
 }

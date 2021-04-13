@@ -13,7 +13,7 @@ use crate::voting::{Commit, VoterSet, VotingRounds};
 #[derive(Debug, Clone)]
 pub enum Request {
 	SendCommit(Commit),
-	SendBlock(Block),
+	SendBlocks(Vec<Block>),
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +25,22 @@ pub enum Response {
 pub enum Payload {
 	Request(Request),
 	Response(Response),
+}
+
+impl Payload {
+    pub fn request(&self) -> &Request {
+		match self {
+			Payload::Request(request) => request,
+			Payload::Response(..) => panic!("logic error"),
+		}
+	}
+
+    pub fn response(&self) -> &Response {
+		match self {
+			Payload::Request(..) => panic!("logic error"),
+			Payload::Response(response) => response,
+		}
+	}
 }
 
 #[derive(Debug)]
@@ -75,11 +91,16 @@ impl Voter {
 	}
 
 	pub fn process_actions(&mut self, current_tick: usize) -> Vec<Message> {
-		let actions = self.actions.iter().filter(|a| a.0 <= current_tick).cloned().collect::<Vec<_>>();
+		let actions = self
+			.actions
+			.iter()
+			.filter(|a| a.0 <= current_tick)
+			.cloned()
+			.collect::<Vec<_>>();
 		self.actions.retain(|a| a.0 > current_tick);
 
 		let mut messages = Vec::new();
-		for (_trigger_time, action) in actions {
+		for (trigger_time, ref action) in actions {
 			match action {
 				Action::BroadcastCommits => {
 					println!("{}: broadcasting all our commits to all voters", self.id);
@@ -97,11 +118,12 @@ impl Voter {
 				}
 				Action::SendBlock(id, block_number) => {
 					println!("{}: send block {} to {}", self.id, block_number, id);
-					if let Some(block) = self.chain.get_block(block_number) {
+					let blocks = self.chain.get_chain_of_blocks(*block_number);
+					if !blocks.is_empty() {
 						messages.push(Message {
 							sender: self.id.clone(),
-							receiver: id,
-							content: Payload::Request(Request::SendBlock(block.clone())),
+							receiver: id.clone(),
+							content: Payload::Request(Request::SendBlocks(blocks)),
 						});
 					} else {
 						println!(
@@ -111,12 +133,22 @@ impl Voter {
 					}
 				}
 				Action::RequeueRequest((sender, request)) => {
-					//println!("{}: requeue ({}, {:?})", self.id, sender, request);
-					messages.push(Message {
-						sender,
-						receiver: self.id.clone(),
-						content: Payload::Request(request),
-					});
+					let should_queue_up = match request {
+						Request::SendCommit(commit) => {
+							self.chain.knows_about_block(commit.target_number)
+						}
+						_ => true,
+					};
+					if should_queue_up {
+						messages.push(Message {
+							sender: sender.clone(),
+							receiver: self.id.clone(),
+							content: Payload::Request(request.clone()),
+						});
+					} else {
+						// Postpone
+						self.actions.push((trigger_time + 10, action.clone()));
+					}
 				}
 				_ => todo!(),
 			}
@@ -140,7 +172,6 @@ impl Voter {
 
 				if !self.chain.knows_about_block(commit.target_number) {
 					// Requeue request for later, when we hopefully know about the block
-					//println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 10, request);
 					self.actions
 						.push((current_tick + 10, Action::RequeueRequest(request.clone())));
 					println!("{}: requesting block {}", self.id, commit.target_number);
@@ -160,25 +191,16 @@ impl Voter {
 					}
 				}
 			}
-			Request::SendBlock(ref block) => {
-				// Ignore blocks we alreday know about
-				if let Some(chain_block) = self.chain.get_block(block.number) {
-					assert_eq!(block, chain_block);
-					return Default::default();
+			Request::SendBlocks(blocks) => {
+				println!("{}: received blocks", self.id);
+				for block in blocks {
+					if let Some(chain_block) = self.chain.get_block(block.number) {
+						assert_eq!(&block, chain_block);
+					} else {
+						println!("{}: adding block {}", self.id, block);
+						self.chain.add_block(block);
+					}
 				}
-				println!("{}: received {}", self.id, block);
-
-				if !self.chain.knows_about_block(block.parent) {
-					// Requeue request for later, when we hopefully know about block
-					//println!("{}: saving as requeue request action: ({}, {:?})", self.id, current_tick + 10, request);
-					self.actions
-						.push((current_tick + 10, Action::RequeueRequest(request.clone())));
-					println!("{}: requesting block {}", self.id, block.parent);
-					return vec![(request.0, Response::RequestBlock(block.parent))];
-				}
-
-				println!("{}: adding block {}", self.id, block);
-				self.chain.add_block(block.clone());
 			}
 		}
 		Default::default()
@@ -188,7 +210,7 @@ impl Voter {
 		match response.1 {
 			Response::RequestBlock(block_number) => {
 				self.actions.push((
-					current_tick + 1,
+					current_tick + 10,
 					Action::SendBlock(response.0, block_number),
 				));
 			}
