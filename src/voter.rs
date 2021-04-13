@@ -67,6 +67,20 @@ impl Voter {
 		}
 		requests
 	}
+
+	pub fn handle_request(&mut self, request: Request) {
+		match request {
+			Request::SendCommit(commit) => {
+				println!("{}: received: {}", self.id, commit);
+
+				for (_block_number, previous_commit) in self.chain.commits() {
+					if !self.chain.is_descendent(commit.target_number, previous_commit.target_number) {
+						println!("{}: received Commit is not descendent of last finalized", self.id);
+					}
+				}
+			}
+		}
+	}
 }
 
 impl Display for Voter {

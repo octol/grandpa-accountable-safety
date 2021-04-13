@@ -80,6 +80,8 @@
 // [1]: https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf,
 //      https://arxiv.org/pdf/2007.01560.pdf
 
+use crate::voting::VoterId;
+use std::collections::BTreeMap;
 use crate::{
 	action::Action,
 	chain::Chain,
@@ -97,7 +99,7 @@ mod voting;
 const MAX_TICKS: usize = 20;
 
 struct World {
-	voters: Vec<Voter>,
+	voters: BTreeMap<VoterId, Voter>,
 	current_tick: usize,
 }
 
@@ -106,7 +108,7 @@ impl World {
 		let names = &["Alice", "Bob", "Carol", "Dave"];
 		let voter_set = VoterSet::new(names);
 
-		let mut voters = Vec::new();
+		let mut voters = BTreeMap::new();
 
 		let chain_common = [(1,0)];
 		let chain_a_fork = [(2,1), (3,2), (4,3)];
@@ -133,28 +135,32 @@ impl World {
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[0], chain.clone(), voter_set.clone(), voting_rounds));
+			let id = names[0];
+			voters.insert(id, Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds));
 		}
 		{
 			let mut chain = Chain::new_from(&chain_all);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[1], chain.clone(), voter_set.clone(), voting_rounds));
+			let id = names[1];
+			voters.insert(id, Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds));
 		}
 		{
 			let mut chain = Chain::new_from(&chain_a);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
-			let mut voter = Voter::new(names[2], chain, voter_set.clone(), voting_rounds);
+			let id = names[2];
+			let mut voter = Voter::new(id, chain, voter_set.clone(), voting_rounds);
 			voter.add_actions(vec![(10, Action::BroadcastCommits)]);
-			voters.push(voter);
+			voters.insert(id, voter);
 		}
 		{
 			let mut chain = Chain::new_from(&chain_b);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			voters.push(Voter::new(names[3], chain, voter_set, voting_rounds));
+			let id = names[3];
+			voters.insert(id, Voter::new(id, chain, voter_set, voting_rounds));
 		}
 
 		Self {
@@ -164,7 +170,7 @@ impl World {
 	}
 
 	fn list_commits(&self) {
-		for voter in &self.voters {
+		for (_, voter) in &self.voters {
 			println!("{}:", voter);
 			voter.list_commits();
 		}
@@ -178,22 +184,22 @@ impl World {
 		self.current_tick >= MAX_TICKS
 	}
 
-	fn process_actions(&mut self) {
+	fn process_actions(&mut self) -> Vec<(String, Request)> {
 		let actions = {
 			let mut actions = Vec::new();
-			for voter in &mut self.voters {
+			for (_, voter) in &mut self.voters {
 				let action = voter.process_actions(self.current_tick);
 				actions.extend(action);
 			}
 			actions
 		};
+		actions
+	}
 
-		for action in actions {
-			match action {
-				(id, Request::SendCommit(commit)) => {
-					println!("Sending to id: {}, {}", id, commit);
-				},
-			}
+
+	fn handle_requests(&mut self, requests: Vec<(String, Request)>) {
+		for (id, request) in requests {
+			self.voters.get_mut(&*id).map(|v| v.handle_request(request));
 		}
 	}
 }
@@ -277,16 +283,6 @@ fn main() {
 
 	world.list_commits();
 
-
-	// PLAN:
-	//  Create queue of "imputs", or "initiatives". A (tick, action).
-	//  Everything else is probably of the form handle_request/response
-	//
-	//  Can start with Carol broadcast her Commit for 2.
-	//  When Dave sees this it should trigger the algoritm
-	//
-	//  Probably don't need channels, just call methods on each others?
-
 	println!("*** Starting loop ***");
 
 	while !world.completed() {
@@ -294,18 +290,9 @@ fn main() {
 		// - check input
 		// - update
 		// - render
-		//
-		// In our case maybe it can be something like
-		//
-		// 1. Process inputs
-		//
-		// for voter in voters {
-		//     voter.act(); // this  can also be to respond
-		// }
-		//
-		// 2.
 
-		world.process_actions();
+		let requests = world.process_actions();
+		world.handle_requests(requests);
 
 		world.tick();
 	}
