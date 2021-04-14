@@ -90,6 +90,7 @@ use crate::{
 use std::collections::BTreeMap;
 
 mod action;
+mod protocol;
 mod block;
 mod chain;
 mod example;

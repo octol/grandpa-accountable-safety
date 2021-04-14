@@ -4,6 +4,7 @@ use crate::{
 	voting::{Commit, VoterSet, VotingRounds},
 	VoterId,
 	message::{Request, Response, Message, Payload},
+	protocol::AccountableSafety,
 };
 use std::{
 	collections::HashMap,
@@ -16,6 +17,7 @@ pub struct Voter {
 	pub voter_set: VoterSet,
 	pub voting_rounds: VotingRounds,
 	pub actions: Vec<(usize, Action)>,
+	pub accountable_safety: AccountableSafety,
 }
 
 impl Voter {
@@ -31,6 +33,7 @@ impl Voter {
 			voter_set,
 			voting_rounds,
 			actions: Default::default(),
+			accountable_safety: AccountableSafety::Inactive,
 		}
 	}
 
