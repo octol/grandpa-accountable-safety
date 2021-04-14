@@ -131,6 +131,7 @@ impl World {
 			.cloned()
 			.collect();
 
+		// Setup the 4 voters and the voting history that they know about.
 		{
 			let mut chain = Chain::new_from(&chain_all);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
@@ -150,7 +151,7 @@ impl World {
 			let id = names[1].to_string();
 			voters.insert(
 				id.clone(),
-				Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
+				Voter::new(id, chain, voter_set.clone(), voting_rounds),
 			);
 		}
 		{
@@ -160,22 +161,21 @@ impl World {
 			let id = names[2].to_string();
 			voters.insert(
 				id.clone(),
-				Voter::new(id, chain, voter_set.clone(), voting_rounds),
+				Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds),
 			);
-			//let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
-			//voter.add_actions(vec![(10, Action::BroadcastCommits)]);
-			//voters.insert(id, voter);
 		}
 		{
 			let mut chain = Chain::new_from(&chain_b);
 			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 			let id = names[3].to_string();
-			//voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
-			let mut voter = Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds);
-			voter.add_actions(vec![(10, Action::BroadcastCommits)]);
-			voters.insert(id, voter);
+			voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
 		}
+
+		// Kick off the simulation by having Carol broadcast all her commits
+		voters
+			.get_mut(&"Carol".to_string())
+			.map(|v| v.add_actions(vec![(10, Action::BroadcastCommits)]));
 
 		Self {
 			voters,
