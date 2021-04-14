@@ -70,7 +70,7 @@ impl Voter {
 								messages.push(Message {
 									sender: self.id.clone(),
 									receiver: voter.to_string(),
-									content: Payload::Request(Request::SendCommit(c.clone())),
+									content: Payload::Request(Request::HereIsCommit(c.clone())),
 								});
 							}
 						}
@@ -83,7 +83,7 @@ impl Voter {
 						messages.push(Message {
 							sender: self.id.clone(),
 							receiver: id.clone(),
-							content: Payload::Request(Request::SendBlocks(blocks)),
+							content: Payload::Request(Request::HereAreBlocks(blocks)),
 						});
 					} else {
 						println!(
@@ -94,7 +94,7 @@ impl Voter {
 				}
 				Action::RequeueRequest((sender, request)) => {
 					let should_queue_up = match request {
-						Request::SendCommit(commit) => {
+						Request::HereIsCommit(commit) => {
 							self.chain.knows_about_block(commit.target_number)
 						}
 						_ => true,
@@ -122,7 +122,7 @@ impl Voter {
 		current_tick: usize,
 	) -> Vec<(VoterId, Response)> {
 		match request.1 {
-			Request::SendCommit(ref commit) => {
+			Request::HereIsCommit(ref commit) => {
 				// Ignore commits we already know about
 				if let Some(chain_commit) = self.chain.commit_for_block(commit.target_number) {
 					assert_eq!(commit, chain_commit);
@@ -151,7 +151,7 @@ impl Voter {
 					}
 				}
 			}
-			Request::SendBlocks(blocks) => {
+			Request::HereAreBlocks(blocks) => {
 				println!("{}: received blocks", self.id);
 				for block in blocks {
 					if let Some(chain_block) = self.chain.get_block(block.number) {

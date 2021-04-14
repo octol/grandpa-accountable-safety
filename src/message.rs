@@ -5,8 +5,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Request {
-	SendCommit(Commit),
-	SendBlocks(Vec<Block>),
+	HereIsCommit(Commit),
+	HereAreBlocks(Vec<Block>),
 }
 
 #[derive(Debug, Clone)]
