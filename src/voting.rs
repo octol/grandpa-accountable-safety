@@ -1,9 +1,12 @@
-use crate::Chain;
+use crate::{
+	chain::Chain,
+	block::BlockNumber,
+};
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
-
-use crate::block::BlockNumber;
+use std::{
+	collections::{HashMap, HashSet},
+	fmt::{Display, Formatter},
+};
 
 pub type VoterName = &'static str;
 pub type VoterId = String;

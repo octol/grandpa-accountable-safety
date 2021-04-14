@@ -83,8 +83,9 @@
 use crate::{
 	action::Action,
 	chain::Chain,
-	voter::{Message, Payload, Request, Response, Voter},
-	voting::{Commit, VoterId, VoterName, VoterSet, VotingRound, VotingRounds},
+	message::{Message, Payload, Request},
+	voter::Voter,
+	voting::{Commit, VoterId, VoterSet, VotingRound, VotingRounds},
 };
 use std::collections::BTreeMap;
 
@@ -92,6 +93,7 @@ mod action;
 mod block;
 mod chain;
 mod example;
+mod message;
 mod voter;
 mod voting;
 

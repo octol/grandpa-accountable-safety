@@ -1,54 +1,14 @@
 use crate::{
 	action::Action,
-	block::{Block, BlockNumber},
 	chain::Chain,
 	voting::{Commit, VoterSet, VotingRounds},
-	VoterId, VoterName,
+	VoterId,
+	message::{Request, Response, Message, Payload},
 };
 use std::{
-	collections::{BTreeMap, HashMap, VecDeque},
+	collections::HashMap,
 	fmt::Display,
 };
-
-#[derive(Debug, Clone)]
-pub enum Request {
-	SendCommit(Commit),
-	SendBlocks(Vec<Block>),
-}
-
-#[derive(Debug, Clone)]
-pub enum Response {
-	RequestBlock(BlockNumber),
-}
-
-#[derive(Debug)]
-pub enum Payload {
-	Request(Request),
-	Response(Response),
-}
-
-impl Payload {
-	pub fn request(&self) -> &Request {
-		match self {
-			Payload::Request(request) => request,
-			Payload::Response(..) => panic!("logic error"),
-		}
-	}
-
-	pub fn response(&self) -> &Response {
-		match self {
-			Payload::Request(..) => panic!("logic error"),
-			Payload::Response(response) => response,
-		}
-	}
-}
-
-#[derive(Debug)]
-pub struct Message {
-	pub sender: VoterId,
-	pub receiver: VoterId,
-	pub content: Payload,
-}
 
 pub struct Voter {
 	pub id: VoterId,

@@ -1,4 +1,4 @@
-use crate::{block::BlockNumber, voting::Commit, Request, VoterId};
+use crate::{block::BlockNumber, Request, VoterId};
 
 #[derive(Debug, Clone)]
 pub enum Action {
