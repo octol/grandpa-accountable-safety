@@ -127,8 +127,8 @@ impl Voter {
 
 					for receiver in receivers {
 						println!(
-							"{}: asking {} about block {}",
-							self.id, receiver, block_not_included
+							"{}: asking {} about block {} and round {}",
+							self.id, receiver, block_not_included, round,
 						);
 						let msg = Message {
 							sender: self.id.clone(),
@@ -248,7 +248,8 @@ impl Voter {
 				return vec![(
 					request.0,
 					Response::PrecommitsForEstimate(
-						valid_voting_round.round_number,
+						//valid_voting_round.round_number,
+						round,
 						valid_voting_round.precommits
 					),
 				)];
@@ -266,14 +267,18 @@ impl Voter {
 				));
 			}
 			Response::PrecommitsForEstimate(round_number, ref precommits) => {
-				dbg!(&round_number);
-				dbg!(&response);
+				println!("{}: handle PrecommitsForEstimate from {}: {}, {:?}", self.id, response.0, round_number, precommits);
 				// WIP: assume a single instance
-				self.accountable_safety
+				let next_query = self.accountable_safety
 					.iter_mut()
 					.next()
 					.unwrap()
 					.add_response(round_number, response.0, precommits.clone(), &self.chain);
+
+				if let Some(next_query)  = next_query {
+					self.actions
+						.push((current_tick + 10, Action::AskVotersAboutEstimate(next_query)));
+				}
 			}
 		}
 	}

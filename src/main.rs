@@ -98,7 +98,7 @@ mod message;
 mod voter;
 mod voting;
 
-const MAX_TICKS: usize = 500;
+const MAX_TICKS: usize = 5000;
 
 struct World {
 	voters: BTreeMap<VoterId, Voter>,

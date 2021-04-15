@@ -108,11 +108,7 @@ impl AccountableSafety {
 					.map(|pre| pre.id.to_string())
 					.unique()
 					.collect();
-				return Some(Query {
-					round: next_round_to_investigate,
-					receivers: voters_in_precommits,
-					block_not_included: self.block_not_included,
-				});
+				return Some(self.start_query_round(next_round_to_investigate, voters_in_precommits));
 			}
 		}
 
