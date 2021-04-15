@@ -31,7 +31,7 @@ impl VoterSet {
 pub type RoundNumber = u64;
 
 #[derive(Clone, Debug)]
-pub struct VotingRounds(HashMap<RoundNumber, Vec<VotingRound>>);
+pub struct VotingRounds(pub HashMap<RoundNumber, Vec<VotingRound>>);
 
 impl VotingRounds {
 	pub fn new() -> Self {
@@ -197,6 +197,33 @@ pub fn precommit_reply_is_valid(
 	// + Add absent votes
 	let num_voters = voter_set.voters.len();
 	let absent_voters = voter_set.voters.difference(&unique_voters).count();
+
+	// A valid response has precommits showing it's impossible to have supermajority for the earlier
+	// finalized block on the other branch
+	!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters)
+}
+
+pub fn precommit_reply_is_valid2(
+	response: &Vec<Precommit>,
+	block: BlockNumber,
+	voters: &Vec<VoterId>,
+	chain: &Chain,
+) -> bool {
+	// No equivocations
+	let unique_voters: HashSet<VoterId> = response.iter().map(|pre| pre.id.to_string()).unique().collect();
+	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
+	assert!(num_equivocations_in_commit == 0);
+
+	// Check impossible to have supermajority for the block
+	let precommits_includes_block = response
+		.iter()
+		.filter(|precommit| chain.block_includes(precommit.target_number, block))
+		.count();
+
+	// + Add absent votes
+	let voters = voters.iter().cloned().collect::<HashSet<_>>();
+	let num_voters = voters.len();
+	let absent_voters = voters.difference(&unique_voters).count();
 
 	// A valid response has precommits showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch

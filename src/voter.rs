@@ -1,23 +1,20 @@
 use crate::{
-	action::Action,
+	action::{Action, TriggerAtTick},
 	chain::Chain,
-	voting::{Commit, VoterSet, VotingRounds},
+	message::{Message, Payload, Request, Response},
+	protocol::{AccountableSafety, Query},
+	voting::{precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
 	VoterId,
-	message::{Request, Response, Message, Payload},
-	protocol::AccountableSafety,
 };
-use std::{
-	collections::HashMap,
-	fmt::Display,
-};
+use std::{collections::HashMap, fmt::Display};
 
 pub struct Voter {
 	pub id: VoterId,
 	pub chain: Chain,
 	pub voter_set: VoterSet,
 	pub voting_rounds: VotingRounds,
-	pub actions: Vec<(usize, Action)>,
-	pub accountable_safety: AccountableSafety,
+	pub actions: Vec<(TriggerAtTick, Action)>,
+	pub accountable_safety: Vec<AccountableSafety>,
 }
 
 impl Voter {
@@ -33,7 +30,7 @@ impl Voter {
 			voter_set,
 			voting_rounds,
 			actions: Default::default(),
-			accountable_safety: AccountableSafety::Inactive,
+			accountable_safety: Default::default(),
 		}
 	}
 
@@ -69,11 +66,16 @@ impl Voter {
 					println!("{}: broadcasting all our commits to all voters", self.id);
 					for voter in &self.voter_set.voters {
 						if *voter != self.id {
-							for (_, c) in self.commits() {
+							for (_, commit) in self.commits() {
+								let round =
+									self.chain.finalized_round(commit.target_number).unwrap();
 								messages.push(Message {
 									sender: self.id.clone(),
 									receiver: voter.to_string(),
-									content: Payload::Request(Request::HereIsCommit(c.clone())),
+									content: Payload::Request(Request::HereIsCommit(
+										*round,
+										commit.clone(),
+									)),
 								});
 							}
 						}
@@ -97,7 +99,7 @@ impl Voter {
 				}
 				Action::RequeueRequest((sender, request)) => {
 					let should_queue_up = match request {
-						Request::HereIsCommit(commit) => {
+						Request::HereIsCommit(_round, commit) => {
 							self.chain.knows_about_block(commit.target_number)
 						}
 						_ => true,
@@ -113,7 +115,34 @@ impl Voter {
 						self.actions.push((trigger_time + 10, action.clone()));
 					}
 				}
-				_ => todo!(),
+				Action::AskVotersAboutEstimate(query) => {
+					let Query {
+						round,
+						receivers,
+						block_not_included,
+					} = query;
+
+					let round_for_block_not_included =
+						self.chain.finalized_round(*block_not_included).unwrap();
+
+					for receiver in receivers {
+						println!(
+							"{}: asking {} about block {}",
+							self.id, receiver, block_not_included
+						);
+						let msg = Message {
+							sender: self.id.clone(),
+							receiver: receiver.clone(),
+							content: Payload::Request(
+								Request::WhyDidEstimateForRoundNotIncludeBlock(
+									*round,
+									*block_not_included,
+								),
+							),
+						};
+						messages.push(msg);
+					}
+				}
 			}
 		}
 		messages
@@ -125,7 +154,7 @@ impl Voter {
 		current_tick: usize,
 	) -> Vec<(VoterId, Response)> {
 		match request.1 {
-			Request::HereIsCommit(ref commit) => {
+			Request::HereIsCommit(round_number, ref commit) => {
 				// Ignore commits we already know about
 				if let Some(chain_commit) = self.chain.commit_for_block(commit.target_number) {
 					assert_eq!(commit, chain_commit);
@@ -148,9 +177,34 @@ impl Voter {
 					{
 						println!(
 							"{}: received commit is not descendent of last finalized, \
-							should trigger accountable safety protocol!",
+							triggering accountable safety protocol!",
 							self.id
 						);
+
+						let block_not_included = previous_commit.target_number;
+						let round_for_block_not_included =
+							self.chain.finalized_round(block_not_included).unwrap();
+						let commit_for_block_not_included = previous_commit;
+
+						let mut accountable_safety_instance = AccountableSafety::start(
+							block_not_included,
+							*round_for_block_not_included,
+							commit_for_block_not_included.clone(),
+						);
+
+						let voters_in_precommit = commit
+							.precommits
+							.iter()
+							.map(|pc| pc.id.to_string())
+							.collect::<Vec<VoterId>>();
+
+						let round_for_new_block = round_number;
+						let query = accountable_safety_instance
+							.start_query_round(round_for_new_block, voters_in_precommit);
+
+						self.accountable_safety.push(accountable_safety_instance);
+						self.actions
+							.push((current_tick + 10, Action::AskVotersAboutEstimate(query)));
 					}
 				}
 			}
@@ -165,6 +219,40 @@ impl Voter {
 					}
 				}
 			}
+			Request::WhyDidEstimateForRoundNotIncludeBlock(round, block_not_included) => {
+				// WIP: We can either return Precommits of Prevotes
+
+				// This is a container of voting rounds, since some voters might have equivocated.
+				let voting_rounds_for_previous_block =
+					self.voting_rounds.get(&(round - 1)).unwrap();
+
+				// Now if this is a equivocating voter, they will want to return the set of commits
+				// corresponding to the valid round.
+				//
+				// We make this choice by checking which of the sets of precommits are considered
+				// valid
+				let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
+					.into_iter()
+					.filter(|voting_round| {
+						precommit_reply_is_valid(
+							&voting_round.precommits,
+							block_not_included,
+							&self.voter_set,
+							&self.chain,
+						)
+					})
+					.collect();
+				assert_eq!(valid_voting_round.len(), 1);
+				let valid_voting_round = valid_voting_round.into_iter().next().unwrap().clone();
+
+				return vec![(
+					request.0,
+					Response::PrecommitsForEstimate(
+						valid_voting_round.round_number,
+						valid_voting_round.precommits
+					),
+				)];
+			}
 		}
 		Default::default()
 	}
@@ -176,6 +264,16 @@ impl Voter {
 					current_tick + 10,
 					Action::SendBlock(response.0, block_number),
 				));
+			}
+			Response::PrecommitsForEstimate(round_number, ref precommits) => {
+				dbg!(&round_number);
+				dbg!(&response);
+				// WIP: assume a single instance
+				self.accountable_safety
+					.iter_mut()
+					.next()
+					.unwrap()
+					.add_response(round_number, response.0, precommits.clone(), &self.chain);
 			}
 		}
 	}

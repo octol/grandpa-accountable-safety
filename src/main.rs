@@ -173,9 +173,10 @@ impl World {
 			voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
 		}
 
-		// Kick off the simulation by having Carol broadcast all her commits
+		// Kick off the simulation by having one voter broadcast all their commits, reveiling the conflicting
+		// finalized blocks to the other (honest) voters.
 		voters
-			.get_mut(&"Carol".to_string())
+			.get_mut(&"Dave".to_string())
 			.map(|v| v.add_actions(vec![(10, Action::BroadcastCommits)]));
 
 		Self {

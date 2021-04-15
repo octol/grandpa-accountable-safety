@@ -141,6 +141,10 @@ impl Chain {
 		blocks.reverse();
 		blocks
 	}
+
+	pub fn finalized_round(&self, block: BlockNumber) -> Option<&RoundNumber> {
+		self.finalized_rounds.get(&block)
+	}
 }
 
 #[cfg(test)]

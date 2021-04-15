@@ -1,17 +1,19 @@
 use crate::{
 	block::{BlockNumber, Block},
-	voting::{VoterId, Commit},
+	voting::{VoterId, Commit, Precommit, RoundNumber},
 };
 
 #[derive(Debug, Clone)]
 pub enum Request {
-	HereIsCommit(Commit),
+	HereIsCommit(RoundNumber, Commit),
 	HereAreBlocks(Vec<Block>),
+	WhyDidEstimateForRoundNotIncludeBlock(RoundNumber, BlockNumber),
 }
 
 #[derive(Debug, Clone)]
 pub enum Response {
 	RequestBlock(BlockNumber),
+	PrecommitsForEstimate(RoundNumber, Vec<Precommit>),
 }
 
 #[derive(Debug)]
