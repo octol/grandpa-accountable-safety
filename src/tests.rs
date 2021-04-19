@@ -122,89 +122,89 @@
 //  (1, 1, _, 5) U (4, 4, 2, _)  => a and b occurs twice and *equivocated*.
 //
 
-use std::collections::{BTreeMap, BTreeSet};
 use crate::{
 	action::Action,
-	world::World,
-	voter::{Voter, VoterId, VoterName},
-	voting::{VoterSet, VotingRound, VotingRounds, Commit},
 	chain::Chain,
+	voter::{Voter, VoterId, VoterName},
+	voting::{Commit, VoterSet, VotingRound, VotingRounds},
+	world::World,
 };
+use std::collections::{BTreeMap, BTreeSet};
 
 fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
-		let names = &["Alice", "Bob", "Carol", "Dave"];
-		let voter_set = VoterSet::new(names);
+	let names = &["Alice", "Bob", "Carol", "Dave"];
+	let voter_set = VoterSet::new(names);
 
-		let mut voters = BTreeMap::new();
+	let mut voters = BTreeMap::new();
 
-		let chain_common = [(1, 0)];
-		let chain_a_fork = [(2, 1), (3, 2), (4, 3)];
-		let chain_b_fork = [(5, 1), (6, 5), (7, 6), (8, 7)];
-		let chain_all: Vec<_> = chain_common
-			.iter()
-			.chain(chain_a_fork.iter())
-			.chain(chain_b_fork.iter())
-			.cloned()
-			.collect();
-		let chain_a: Vec<_> = chain_common
-			.iter()
-			.chain(chain_a_fork.iter())
-			.cloned()
-			.collect();
-		let chain_b: Vec<_> = chain_common
-			.iter()
-			.chain(chain_b_fork.iter())
-			.cloned()
-			.collect();
+	let chain_common = [(1, 0)];
+	let chain_a_fork = [(2, 1), (3, 2), (4, 3)];
+	let chain_b_fork = [(5, 1), (6, 5), (7, 6), (8, 7)];
+	let chain_all: Vec<_> = chain_common
+		.iter()
+		.chain(chain_a_fork.iter())
+		.chain(chain_b_fork.iter())
+		.cloned()
+		.collect();
+	let chain_a: Vec<_> = chain_common
+		.iter()
+		.chain(chain_a_fork.iter())
+		.cloned()
+		.collect();
+	let chain_b: Vec<_> = chain_common
+		.iter()
+		.chain(chain_b_fork.iter())
+		.cloned()
+		.collect();
 
-		// Setup the 4 voters and the voting history that they know about.
-		{
-			let mut chain = Chain::new_from(&chain_all);
-			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
-			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
-			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[0].to_string();
-			voters.insert(
-				id.clone(),
-				Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
-			);
-		}
-		{
-			let mut chain = Chain::new_from(&chain_all);
-			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
-			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
-			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[1].to_string();
-			voters.insert(
-				id.clone(),
-				Voter::new(id, chain, voter_set.clone(), voting_rounds),
-			);
-		}
-		{
-			let mut chain = Chain::new_from(&chain_a);
-			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
-			append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[2].to_string();
-			voters.insert(
-				id.clone(),
-				Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds),
-			);
-		}
-		{
-			let mut chain = Chain::new_from(&chain_b);
-			let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
-			append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
-			let id = names[3].to_string();
-			voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
-		}
+	// Setup the 4 voters and the voting history that they know about.
+	{
+		let mut chain = Chain::new_from(&chain_all);
+		let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
+		append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
+		append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
+		let id = names[0].to_string();
+		voters.insert(
+			id.clone(),
+			Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
+		);
+	}
+	{
+		let mut chain = Chain::new_from(&chain_all);
+		let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
+		append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
+		append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
+		let id = names[1].to_string();
+		voters.insert(
+			id.clone(),
+			Voter::new(id, chain, voter_set.clone(), voting_rounds),
+		);
+	}
+	{
+		let mut chain = Chain::new_from(&chain_a);
+		let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
+		append_voting_rounds_a(&mut voting_rounds, &voter_set, &mut chain);
+		let id = names[2].to_string();
+		voters.insert(
+			id.clone(),
+			Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds),
+		);
+	}
+	{
+		let mut chain = Chain::new_from(&chain_b);
+		let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
+		append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
+		let id = names[3].to_string();
+		voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
+	}
 
-		// Kick off the simulation by having one voter broadcast all their commits, reveiling the conflicting
-		// finalized blocks to the other (honest) voters.
-		voters
-			.get_mut(&"Dave".to_string())
-			.map(|v| v.add_actions(vec![(10, Action::BroadcastCommits)]));
+	// Kick off the simulation by having one voter broadcast all their commits, reveiling the conflicting
+	// finalized blocks to the other (honest) voters.
+	voters
+		.get_mut(&"Dave".to_string())
+		.map(|v| v.add_actions(vec![(10, Action::BroadcastCommits)]));
 
-		voters
+	voters
 }
 
 fn create_common_voting_rounds(voter_set: &VoterSet, chain: &mut Chain) -> VotingRounds {

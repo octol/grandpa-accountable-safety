@@ -17,12 +17,11 @@
 use crate::{
 	block::BlockNumber,
 	chain::Chain,
-	voting::{
-		cross_check_precommit_reply_against_commit,
-		precommit_reply_is_valid2, Precommit, RoundNumber,
-		Commit,
-	},
 	voter::VoterId,
+	voting::{
+		cross_check_precommit_reply_against_commit, precommit_reply_is_valid2, Commit, Precommit,
+		RoundNumber,
+	},
 };
 use itertools::Itertools;
 use std::collections::BTreeMap;

@@ -15,8 +15,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	chain::Chain,
 	block::BlockNumber,
+	chain::Chain,
 	voter::{VoterId, VoterName},
 };
 use itertools::Itertools;
@@ -224,7 +224,11 @@ pub fn precommit_reply_is_valid2(
 	chain: &Chain,
 ) -> bool {
 	// No equivocations
-	let unique_voters: HashSet<VoterId> = response.iter().map(|pre| pre.id.to_string()).unique().collect();
+	let unique_voters: HashSet<VoterId> = response
+		.iter()
+		.map(|pre| pre.id.to_string())
+		.unique()
+		.collect();
 	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
 	assert!(num_equivocations_in_commit == 0);
 

@@ -97,10 +97,10 @@
 //      https://arxiv.org/pdf/2007.01560.pdf
 
 mod action;
-mod protocol;
 mod block;
 mod chain;
 mod message;
+mod protocol;
 mod voter;
 mod voting;
 mod world;

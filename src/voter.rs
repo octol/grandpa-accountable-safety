@@ -265,10 +265,7 @@ impl Voter {
 
 				return vec![(
 					request.0,
-					Response::PrecommitsForEstimate(
-						round,
-						valid_voting_round.precommits
-					),
+					Response::PrecommitsForEstimate(round, valid_voting_round.precommits),
 				)];
 			}
 		}
@@ -284,17 +281,23 @@ impl Voter {
 				));
 			}
 			Response::PrecommitsForEstimate(round_number, ref precommits) => {
-				println!("{}: handle PrecommitsForEstimate from {}: {}, {:?}", self.id, response.0, round_number, precommits);
+				println!(
+					"{}: handle PrecommitsForEstimate from {}: {}, {:?}",
+					self.id, response.0, round_number, precommits
+				);
 				// WIP: assume a single instance
-				let next_query = self.accountable_safety
+				let next_query = self
+					.accountable_safety
 					.iter_mut()
 					.next()
 					.unwrap()
 					.add_response(round_number, response.0, precommits.clone(), &self.chain);
 
-				if let Some(next_query)  = next_query {
-					self.actions
-						.push((current_tick + 10, Action::AskVotersAboutEstimate(next_query)));
+				if let Some(next_query) = next_query {
+					self.actions.push((
+						current_tick + 10,
+						Action::AskVotersAboutEstimate(next_query),
+					));
 				}
 			}
 		}

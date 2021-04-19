@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{message::Request, voter::VoterId, block::BlockNumber, protocol::Query};
+use crate::{block::BlockNumber, message::Request, protocol::Query, voter::VoterId};
 
 pub type TriggerAtTick = usize;
 

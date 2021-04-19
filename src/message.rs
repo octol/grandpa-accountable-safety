@@ -15,9 +15,9 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	block::{BlockNumber, Block},
+	block::{Block, BlockNumber},
+	voter::VoterId,
 	voting::{Commit, Precommit, RoundNumber},
-	voter::VoterId
 };
 
 #[derive(Debug, Clone)]
@@ -61,4 +61,3 @@ pub struct Message {
 	pub receiver: VoterId,
 	pub content: Payload,
 }
-
