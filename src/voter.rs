@@ -84,7 +84,7 @@ impl Voter {
 					println!("{}: broadcasting all our commits to all voters", self.id);
 					for voter in &self.voter_set.voters {
 						if *voter != self.id {
-							for (_, commit) in self.commits() {
+							for commit in self.commits().values() {
 								let round =
 									self.chain.finalized_round(commit.target_number).unwrap();
 								messages.push(Message {
@@ -188,7 +188,7 @@ impl Voter {
 					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
 
-				for (_block_number, previous_commit) in self.chain.commits() {
+				for previous_commit in self.chain.commits().values() {
 					if !self
 						.chain
 						.is_descendent(commit.target_number, previous_commit.target_number)
@@ -250,7 +250,7 @@ impl Voter {
 				// We make this choice by checking which of the sets of precommits are considered
 				// valid
 				let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
-					.into_iter()
+					.iter()
 					.filter(|voting_round| {
 						precommit_reply_is_valid(
 							&voting_round.precommits,

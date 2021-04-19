@@ -57,7 +57,7 @@ impl Chain {
 		// Check that parent exists
 		assert!(matches!(self.blocks.get(&block.parent), Some(_)));
 		assert!(matches!(
-			self.blocks.insert(block.number, block.clone()),
+			self.blocks.insert(block.number, block),
 			None
 		));
 	}
@@ -160,6 +160,12 @@ impl Chain {
 
 	pub fn finalized_round(&self, block: BlockNumber) -> Option<&RoundNumber> {
 		self.finalized_rounds.get(&block)
+	}
+}
+
+impl Default for Chain {
+	fn default() -> Self {
+		Self::new()
 	}
 }
 

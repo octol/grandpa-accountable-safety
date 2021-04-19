@@ -30,7 +30,7 @@ impl Block {
 	}
 
 	pub fn is_genesis(&self) -> bool {
-		return self.number == 0 && self.parent == 0;
+		self.number == 0 && self.parent == 0
 	}
 }
 

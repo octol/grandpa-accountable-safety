@@ -36,7 +36,7 @@ impl World {
 	}
 
 	pub fn list_commits(&self) {
-		for (_, voter) in &self.voters {
+		for voter in self.voters.values() {
 			println!("{}:", voter);
 			voter.list_commits();
 		}
@@ -52,7 +52,7 @@ impl World {
 
 	pub fn process_actions(&mut self) -> Vec<Message> {
 		let mut requests = Vec::new();
-		for (_, voter) in &mut self.voters {
+		for voter in self.voters.values_mut() {
 			let voter_requests = voter.process_actions(self.current_tick);
 			requests.extend(voter_requests);
 		}

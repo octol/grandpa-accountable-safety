@@ -134,6 +134,6 @@ impl AccountableSafety {
 			}
 		}
 
-		return None;
+		None
 	}
 }

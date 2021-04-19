@@ -34,7 +34,7 @@ pub struct VoterSet {
 impl VoterSet {
 	pub fn new(voter_ids: &[VoterName]) -> Self {
 		Self {
-			voters: voter_ids.into_iter().cloned().collect(),
+			voters: voter_ids.iter().cloned().collect(),
 		}
 	}
 
@@ -75,6 +75,12 @@ impl VotingRounds {
 	}
 }
 
+impl Default for VotingRounds {
+	fn default() -> Self {
+		Self::new()
+	}
+}
+
 #[derive(Clone, Debug)]
 pub struct VotingRound {
 	pub round_number: RoundNumber,
@@ -112,7 +118,7 @@ impl VotingRound {
 
 	pub fn prevote(&mut self, votes: &[(BlockNumber, VoterName)]) {
 		let mut votes = votes
-			.into_iter()
+			.iter()
 			.map(|(n, id)| {
 				assert!(self.voter_set.is_member(id));
 				Prevote::new(*n, id)
@@ -123,7 +129,7 @@ impl VotingRound {
 
 	pub fn precommit(&mut self, votes: &[(BlockNumber, VoterName)]) {
 		let mut votes = votes
-			.into_iter()
+			.iter()
 			.map(|(n, id)| {
 				assert!(self.voter_set.is_member(id));
 				Precommit::new(*n, id)
@@ -197,9 +203,9 @@ impl Display for Commit {
 // The purpose of the response is to return a set of precommits showing it is impossible to have a
 // supermajority for the given block.
 pub fn precommit_reply_is_valid(
-	response: &Vec<Precommit>,
+	response: &[Precommit],
 	block: BlockNumber,
-	voters: &Vec<VoterId>,
+	voters: &[VoterId],
 	chain: &Chain,
 ) -> bool {
 	// No equivocations
@@ -224,7 +230,7 @@ pub fn precommit_reply_is_valid(
 
 	// A valid response has precommits showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch
-	!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters)
+	3 * (precommits_includes_block + absent_voters) <= 2 * num_voters
 }
 
 // Cross check against precommitters in commit message
@@ -240,7 +246,7 @@ pub fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Co
 			equivocated_votes.iter().for_each(|e| {
 				print!(", {}", e.target_number);
 			});
-			print!("\n");
+			println!();
 		}
 	}
 }
@@ -257,7 +263,7 @@ pub fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<P
 			equivocated_votes.iter().for_each(|e| {
 				print!(", {}", e.target_number);
 			});
-			print!("\n");
+			println!();
 		}
 	}
 }
