@@ -19,7 +19,7 @@ use crate::{
 	chain::Chain,
 	voter::VoterId,
 	voting::{
-		cross_check_precommit_reply_against_commit, precommit_reply_is_valid2, Commit, Precommit,
+		cross_check_precommit_reply_against_commit, precommit_reply_is_valid, Commit, Precommit,
 		RoundNumber,
 	},
 };
@@ -103,7 +103,7 @@ impl AccountableSafety {
 		{
 			let mut querying_state = self.querying_rounds.get_mut(&round).unwrap();
 			let voters = querying_state.voters.clone();
-			precommit_reply_is_valid2(&precommits, self.block_not_included, &voters, &chain);
+			precommit_reply_is_valid(&precommits, self.block_not_included, &voters, &chain);
 			querying_state.add_response(voter, precommits.clone());
 		}
 

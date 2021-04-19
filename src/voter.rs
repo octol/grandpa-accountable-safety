@@ -255,7 +255,7 @@ impl Voter {
 						precommit_reply_is_valid(
 							&voting_round.precommits,
 							block_not_included,
-							&self.voter_set,
+							&self.voter_set.voter_ids(),
 							&self.chain,
 						)
 					})

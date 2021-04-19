@@ -27,6 +27,7 @@ use std::{
 
 #[derive(Clone, Debug)]
 pub struct VoterSet {
+	// WIP: consider store as VoterId to avoid ugly conversions
 	pub voters: HashSet<VoterName>,
 }
 
@@ -39,6 +40,10 @@ impl VoterSet {
 
 	pub fn is_member(&self, voter: VoterName) -> bool {
 		self.voters.contains(voter)
+	}
+
+	pub fn voter_ids(&self) -> Vec<VoterId> {
+		self.voters.iter().map(|v| String::from(*v)).collect()
 	}
 }
 
@@ -77,8 +82,8 @@ pub struct VotingRound {
 	pub prevotes: Vec<Prevote>,
 	pub precommits: Vec<Precommit>,
 	pub finalized: Option<BlockNumber>,
-	// We might have multiple voting rounds per round when the network is forked. This field is used to disambiguate
-	// them
+	// We might have multiple voting rounds per round when the network is forked. This field is used
+	// to disambiguate them
 	pub tag: u32,
 }
 
@@ -192,32 +197,6 @@ impl Display for Commit {
 // The purpose of the response is to return a set of precommits showing it is impossible to have a
 // supermajority for the given block.
 pub fn precommit_reply_is_valid(
-	response: &Vec<Precommit>,
-	block: BlockNumber,
-	voter_set: &VoterSet,
-	chain: &Chain,
-) -> bool {
-	// No equivocations
-	let unique_voters: HashSet<VoterName> = response.iter().map(|pre| pre.id).unique().collect();
-	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
-	assert!(num_equivocations_in_commit == 0);
-
-	// Check impossible to have supermajority for the block
-	let precommits_includes_block = response
-		.iter()
-		.filter(|precommit| chain.block_includes(precommit.target_number, block))
-		.count();
-
-	// + Add absent votes
-	let num_voters = voter_set.voters.len();
-	let absent_voters = voter_set.voters.difference(&unique_voters).count();
-
-	// A valid response has precommits showing it's impossible to have supermajority for the earlier
-	// finalized block on the other branch
-	!(3 * (precommits_includes_block + absent_voters) > 2 * num_voters)
-}
-
-pub fn precommit_reply_is_valid2(
 	response: &Vec<Precommit>,
 	block: BlockNumber,
 	voters: &Vec<VoterId>,
