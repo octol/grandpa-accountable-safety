@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::voting::cross_check_precommit_reply_against_commit;
-use crate::voting::precommit_reply_is_valid;
-use crate::voting::precommit_reply_is_valid2;
-use crate::Commit;
-use crate::{block::BlockNumber, chain::Chain, voting::Precommit, voting::RoundNumber, VoterId};
+use crate::{
+	block::BlockNumber,
+	chain::Chain,
+	voting::{
+		cross_check_precommit_reply_against_commit,
+		precommit_reply_is_valid2, Precommit, RoundNumber,
+	},
+	Commit, VoterId,
+};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 
@@ -124,7 +128,9 @@ impl AccountableSafety {
 					.map(|pre| pre.id.to_string())
 					.unique()
 					.collect();
-				return Some(self.start_query_round(next_round_to_investigate, voters_in_precommits));
+				return Some(
+					self.start_query_round(next_round_to_investigate, voters_in_precommits),
+				);
 			}
 		}
 
