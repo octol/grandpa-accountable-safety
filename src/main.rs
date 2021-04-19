@@ -265,18 +265,18 @@ fn run_chain_scenario_from_paper() {
 	//  Q: Why did the estimate for round 2 in round 3 not include block 2 when prevoting or
 	//     precommitting
 	//
-	// (NOTE: we are only asking the voters that precommitted for 8, so {a, b, _, d}).
-	// (what about prevoted?)
+	// (NOTE: we are only asking the voters that precommitted or prevoted for 8, so {a, b, _, d}).
+	// (QUESTION: what about those that prevoted but didn't precommit?)
 
 	round -= 1;
 	let previous_round = voting_rounds.get(&(round - 1)).unwrap();
+	// The response is only from the second voting group
 	let voting_round = previous_round[VOTING_GROUP_B].clone();
 
 	// Alternative 1:
 	//  A: A set of precommits for round 2, that shows it's impossible to have supermajority for
 	//     block 2 in round 2.
 	{
-		// ... the response is only from the second voting group ...
 		let response_is_precommits = voting_round.precommits.clone();
 		assert_eq!(
 			precommit_reply_is_valid(
@@ -300,7 +300,6 @@ fn run_chain_scenario_from_paper() {
 	// Alternative 2:
 	//  A: A set of prevotes for round 2.
 	//  (QUESTION: what is the point of even accepting prevotes as reply to the query?)
-
 	{
 		let response_is_prevotes = voting_round.prevotes;
 
@@ -316,7 +315,8 @@ fn run_chain_scenario_from_paper() {
 			.map(|p| p.id)
 			.collect::<Vec<_>>();
 
-		// ... ask `voters_in_commit` what prevotes they have seen ...
+		// We get the prevotes for this set of voters by going through the VotingRound and
+		// confirming that the participants are the same.
 
 		let voting_round_from_other_fork = previous_round[VOTING_GROUP_A].clone();
 		let voters_from_other_fork = voting_round_from_other_fork
@@ -324,7 +324,6 @@ fn run_chain_scenario_from_paper() {
 			.iter()
 			.map(|p| p.id)
 			.collect::<Vec<_>>();
-
 		assert_eq!(voters_in_commit, voters_from_other_fork,);
 
 		let response_about_prevotes_seen = voting_round_from_other_fork.prevotes;
