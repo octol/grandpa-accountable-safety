@@ -125,6 +125,7 @@
 use crate::{
 	action::Action,
 	chain::Chain,
+	protocol::{Equivocation, EquivocationDetected},
 	voter::{Voter, VoterId},
 	voting::{Commit, VoterSet, VotingRound, VotingRounds},
 	world::World,
@@ -293,7 +294,43 @@ fn basic_example() {
 		let requests = world.process_actions();
 		let responses = world.handle_requests(requests);
 		world.handle_responses(responses);
-
 		world.tick();
 	}
+
+	// TODO(JON): Figure out where these duplications are coming from
+	assert_eq!(
+		world.equivocations_detected(),
+		&[
+			EquivocationDetected::Precommit(vec![
+				Equivocation {
+					voter: "Alice".to_string(),
+					blocks: vec![1, 2],
+				},
+				Equivocation {
+					voter: "Bob".to_string(),
+					blocks: vec![1, 2],
+				}
+			]),
+			EquivocationDetected::Precommit(vec![
+				Equivocation {
+					voter: "Alice".to_string(),
+					blocks: vec![1, 2],
+				},
+				Equivocation {
+					voter: "Bob".to_string(),
+					blocks: vec![1, 2],
+				}
+			]),
+			EquivocationDetected::Precommit(vec![
+				Equivocation {
+					voter: "Alice".to_string(),
+					blocks: vec![1, 2],
+				},
+				Equivocation {
+					voter: "Bob".to_string(),
+					blocks: vec![1, 2],
+				}
+			])
+		],
+	);
 }

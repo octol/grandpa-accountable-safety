@@ -16,6 +16,7 @@
 
 use crate::{
 	message::{Message, Payload},
+	protocol::EquivocationDetected,
 	voter::{Voter, VoterId},
 };
 use std::collections::BTreeMap;
@@ -99,5 +100,12 @@ impl World {
 				.expect("all responses are to known voters");
 			receiving_voter.handle_response((sender, response.clone()), self.current_tick);
 		}
+	}
+
+	pub fn equivocations_detected(&self) -> Vec<EquivocationDetected> {
+		self.voters
+			.values()
+			.flat_map(|voter| voter.equivocations_detected())
+			.collect()
 	}
 }

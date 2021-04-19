@@ -19,8 +19,8 @@ use crate::{
 	chain::Chain,
 	voter::VoterId,
 	voting::{
-		cross_check_precommit_reply_against_commit, precommit_reply_is_valid, Commit, Precommit,
-		RoundNumber,
+		check_precommit_reply_is_valid, cross_check_precommit_reply_against_commit, Commit,
+		Precommit, RoundNumber,
 	},
 };
 use itertools::Itertools;
@@ -43,6 +43,7 @@ struct QueryState {
 	round: RoundNumber,
 	voters: Vec<VoterId>,
 	responses: BTreeMap<VoterId, Vec<Precommit>>,
+	equivocations: Vec<EquivocationDetected>,
 }
 
 impl QueryState {
@@ -57,6 +58,19 @@ pub struct Query {
 	pub round: RoundNumber,
 	pub receivers: Vec<VoterId>,
 	pub block_not_included: BlockNumber,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EquivocationDetected {
+	Prevote(Vec<Equivocation>),
+	Precommit(Vec<Equivocation>),
+	InvalidResponse(VoterId),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Equivocation {
+	pub voter: VoterId,
+	pub blocks: Vec<BlockNumber>,
 }
 
 impl AccountableSafety {
@@ -82,6 +96,7 @@ impl AccountableSafety {
 				round,
 				voters: voters.clone(),
 				responses: Default::default(),
+				equivocations: Default::default(),
 			},
 		);
 
@@ -103,17 +118,30 @@ impl AccountableSafety {
 		{
 			let querying_state = self.querying_rounds.get_mut(&round).unwrap();
 			let voters = querying_state.voters.clone();
-			precommit_reply_is_valid(&precommits, self.block_not_included, &voters, &chain);
-			querying_state.add_response(voter, precommits.clone());
+			if let Some(invalid_response) = check_precommit_reply_is_valid(
+				&precommits,
+				self.block_not_included,
+				&voters,
+				&chain,
+			) {
+				querying_state.equivocations.push(invalid_response);
+				return None;
+			} else {
+				querying_state.add_response(voter, precommits.clone());
+			}
 		}
 
 		// Was this for the round directly after the round where the block that should have been
 		// included, but wasn't, was finalized?
 		if round == self.round_for_block_not_included + 1 {
-			cross_check_precommit_reply_against_commit(
+			if let Some(equivocations) = cross_check_precommit_reply_against_commit(
 				&precommits,
 				self.commit_for_block_not_included.clone(),
-			);
+			) {
+				let querying_state = self.querying_rounds.get_mut(&round).unwrap();
+				querying_state.equivocations.push(equivocations);
+				dbg!(&self);
+			};
 		} else {
 			// Start the next round if not already done
 			let next_round_to_investigate = round - 1;
@@ -135,5 +163,12 @@ impl AccountableSafety {
 		}
 
 		None
+	}
+
+	pub fn equivocations_detected(&self) -> Vec<EquivocationDetected> {
+		self.querying_rounds
+			.values()
+			.flat_map(|query_state| query_state.equivocations.clone())
+			.collect()
 	}
 }

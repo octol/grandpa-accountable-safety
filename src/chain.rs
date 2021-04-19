@@ -56,10 +56,7 @@ impl Chain {
 	pub fn add_block(&mut self, block: Block) {
 		// Check that parent exists
 		assert!(matches!(self.blocks.get(&block.parent), Some(_)));
-		assert!(matches!(
-			self.blocks.insert(block.number, block),
-			None
-		));
+		assert!(matches!(self.blocks.insert(block.number, block), None));
 	}
 
 	pub fn finalize_block(

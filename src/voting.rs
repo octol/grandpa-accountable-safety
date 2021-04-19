@@ -17,6 +17,7 @@
 use crate::{
 	block::BlockNumber,
 	chain::Chain,
+	protocol::{Equivocation, EquivocationDetected},
 	voter::{VoterId, VoterName},
 };
 use itertools::Itertools;
@@ -202,20 +203,32 @@ impl Display for Commit {
 // Check the validity of a response containing precommits.
 // The purpose of the response is to return a set of precommits showing it is impossible to have a
 // supermajority for the given block.
-pub fn precommit_reply_is_valid(
+pub fn check_precommit_reply_is_valid(
 	response: &[Precommit],
 	block: BlockNumber,
 	voters: &[VoterId],
 	chain: &Chain,
-) -> bool {
-	// No equivocations
+) -> Option<EquivocationDetected> {
+	// Count equivocations in response
+	let mut voters_in_response = HashMap::new();
+	for precommit in response {
+		voters_in_response
+			.entry(precommit.id)
+			.or_insert(vec![])
+			.push(precommit);
+	}
+
 	let unique_voters: HashSet<VoterId> = response
 		.iter()
 		.map(|pre| pre.id.to_string())
 		.unique()
 		.collect();
-	let num_equivocations_in_commit = response.iter().count() - unique_voters.iter().count();
-	assert!(num_equivocations_in_commit == 0);
+
+	let num_equivocations_in_precommit = response.iter().count() - unique_voters.iter().count();
+	if num_equivocations_in_precommit > 0 {
+		todo!();
+		//return EquivocationDetected::Precommit(equ);
+	}
 
 	// Check impossible to have supermajority for the block
 	let precommits_includes_block = response
@@ -230,11 +243,30 @@ pub fn precommit_reply_is_valid(
 
 	// A valid response has precommits showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch
-	3 * (precommits_includes_block + absent_voters) <= 2 * num_voters
+	dbg!(&block);
+	dbg!(&response);
+	dbg!(&voters);
+	dbg!(&precommits_includes_block);
+	dbg!(&absent_voters);
+	dbg!(&num_voters);
+	if 3 * (precommits_includes_block + absent_voters) <= 2 * num_voters {
+		None
+	} else {
+		// WIP(JON): return a proper response.
+		// We can't have a todo! here as the bad voter logic uses the return value.
+		Some(EquivocationDetected::InvalidResponse(
+			"placeholder".to_string(),
+		))
+	}
 }
 
 // Cross check against precommitters in commit message
-pub fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Commit) {
+pub fn cross_check_precommit_reply_against_commit(
+	s: &Vec<Precommit>,
+	commit: Commit,
+) -> Option<EquivocationDetected> {
+	let mut equivocations = Vec::new();
+
 	for precommit in &commit.precommits {
 		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == precommit.id).collect();
 
@@ -247,7 +279,22 @@ pub fn cross_check_precommit_reply_against_commit(s: &Vec<Precommit>, commit: Co
 				print!(", {}", e.target_number);
 			});
 			println!();
+
+			let mut new_equivocations = equivocated_votes
+				.iter()
+				.map(|precommit| Equivocation {
+					voter: precommit.id.to_string(),
+					blocks: vec![precommit.target_number, commit.target_number],
+				})
+				.collect();
+
+			equivocations.append(&mut new_equivocations);
 		}
+	}
+	if equivocations.is_empty() {
+		None
+	} else {
+		Some(EquivocationDetected::Precommit(equivocations))
 	}
 }
 

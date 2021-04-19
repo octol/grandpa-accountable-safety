@@ -18,8 +18,8 @@ use crate::{
 	action::{Action, TriggerAtTick},
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
-	protocol::{AccountableSafety, Query},
-	voting::{precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
+	protocol::{AccountableSafety, EquivocationDetected, Query},
+	voting::{check_precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
 };
 use std::{collections::HashMap, fmt::Display};
 
@@ -252,12 +252,13 @@ impl Voter {
 				let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
 					.iter()
 					.filter(|voting_round| {
-						precommit_reply_is_valid(
+						check_precommit_reply_is_valid(
 							&voting_round.precommits,
 							block_not_included,
 							&self.voter_set.voter_ids(),
 							&self.chain,
 						)
+						.is_none()
 					})
 					.collect();
 				assert_eq!(valid_voting_round.len(), 1);
@@ -301,6 +302,13 @@ impl Voter {
 				}
 			}
 		}
+	}
+
+	pub fn equivocations_detected(&self) -> Vec<EquivocationDetected> {
+		self.accountable_safety
+			.iter()
+			.flat_map(|acc_safety| acc_safety.equivocations_detected())
+			.collect()
 	}
 }
 
