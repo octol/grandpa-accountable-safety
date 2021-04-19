@@ -20,8 +20,9 @@ use crate::{
 	voting::{
 		cross_check_precommit_reply_against_commit,
 		precommit_reply_is_valid2, Precommit, RoundNumber,
+		Commit,
 	},
-	Commit, VoterId,
+	voter::VoterId,
 };
 use itertools::Itertools;
 use std::collections::BTreeMap;

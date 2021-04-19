@@ -16,7 +16,8 @@
 
 use crate::{
 	block::{BlockNumber, Block},
-	voting::{VoterId, Commit, Precommit, RoundNumber},
+	voting::{Commit, Precommit, RoundNumber},
+	voter::VoterId
 };
 
 #[derive(Debug, Clone)]

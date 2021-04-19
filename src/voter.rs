@@ -20,9 +20,11 @@ use crate::{
 	message::{Message, Payload, Request, Response},
 	protocol::{AccountableSafety, Query},
 	voting::{precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
-	VoterId,
 };
 use std::{collections::HashMap, fmt::Display};
+
+pub type VoterName = &'static str;
+pub type VoterId = String;
 
 pub struct Voter {
 	pub id: VoterId,
@@ -264,7 +266,6 @@ impl Voter {
 				return vec![(
 					request.0,
 					Response::PrecommitsForEstimate(
-						//valid_voting_round.round_number,
 						round,
 						valid_voting_round.precommits
 					),

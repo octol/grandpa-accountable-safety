@@ -17,15 +17,13 @@
 use crate::{
 	chain::Chain,
 	block::BlockNumber,
+	voter::{VoterId, VoterName},
 };
 use itertools::Itertools;
 use std::{
 	collections::{HashMap, HashSet},
 	fmt::{Display, Formatter},
 };
-
-pub type VoterName = &'static str;
-pub type VoterId = String;
 
 #[derive(Clone, Debug)]
 pub struct VoterSet {
