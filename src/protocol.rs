@@ -101,7 +101,7 @@ impl AccountableSafety {
 	) -> Option<Query> {
 		// Add response to the right QueryState in querying_rounds.
 		{
-			let mut querying_state = self.querying_rounds.get_mut(&round).unwrap();
+			let querying_state = self.querying_rounds.get_mut(&round).unwrap();
 			let voters = querying_state.voters.clone();
 			precommit_reply_is_valid(&precommits, self.block_not_included, &voters, &chain);
 			querying_state.add_response(voter, precommits.clone());

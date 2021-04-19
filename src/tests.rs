@@ -125,11 +125,11 @@
 use crate::{
 	action::Action,
 	chain::Chain,
-	voter::{Voter, VoterId, VoterName},
+	voter::{Voter, VoterId},
 	voting::{Commit, VoterSet, VotingRound, VotingRounds},
 	world::World,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 	let names = &["Alice", "Bob", "Carol", "Dave"];

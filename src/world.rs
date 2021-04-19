@@ -15,11 +15,8 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-	action::Action,
-	chain::Chain,
-	message::{Message, Payload, Request},
+	message::{Message, Payload},
 	voter::{Voter, VoterId},
-	voting::{Commit, VoterSet, VotingRound, VotingRounds},
 };
 use std::collections::BTreeMap;
 

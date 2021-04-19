@@ -103,8 +103,7 @@ mod message;
 mod protocol;
 mod voter;
 mod voting;
-mod world;
+pub mod world;
 
+#[cfg(test)]
 mod tests;
-
-fn main() {}

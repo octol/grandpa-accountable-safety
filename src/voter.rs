@@ -140,7 +140,7 @@ impl Voter {
 						block_not_included,
 					} = query;
 
-					let round_for_block_not_included =
+					let _round_for_block_not_included =
 						self.chain.finalized_round(*block_not_included).unwrap();
 
 					for receiver in receivers {
