@@ -243,13 +243,59 @@ pub fn check_precommit_reply_is_valid(
 
 	// A valid response has precommits showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch
-	dbg!(&block);
-	dbg!(&response);
-	dbg!(&voters);
-	dbg!(&precommits_includes_block);
-	dbg!(&absent_voters);
-	dbg!(&num_voters);
 	if 3 * (precommits_includes_block + absent_voters) <= 2 * num_voters {
+		None
+	} else {
+		// WIP(JON): return a proper response.
+		// We can't have a todo! here as the bad voter logic uses the return value.
+		Some(EquivocationDetected::InvalidResponse(
+			"placeholder".to_string(),
+		))
+	}
+}
+
+// WIP(JON): generalize and merge this function with the one for precommits
+pub fn check_prevote_reply_is_valid(
+	response: &[Prevote],
+	block: BlockNumber,
+	voters: &[VoterId],
+	chain: &Chain,
+) -> Option<EquivocationDetected> {
+	// Count equivocations in response
+	let mut voters_in_response = HashMap::new();
+	for prevote in response {
+		voters_in_response
+			.entry(prevote.id)
+			.or_insert(vec![])
+			.push(prevote);
+	}
+
+	let unique_voters: HashSet<VoterId> = response
+		.iter()
+		.map(|pre| pre.id.to_string())
+		.unique()
+		.collect();
+
+	let num_equivocations_in_precommit = response.iter().count() - unique_voters.iter().count();
+	if num_equivocations_in_precommit > 0 {
+		todo!();
+		//return EquivocationDetected::Precommit(equ);
+	}
+
+	// Check impossible to have supermajority for the block
+	let prevotes_includes_block = response
+		.iter()
+		.filter(|prevote| chain.block_includes(prevote.target_number, block))
+		.count();
+
+	// + Add absent votes
+	let voters = voters.iter().cloned().collect::<HashSet<_>>();
+	let num_voters = voters.len();
+	let absent_voters = voters.difference(&unique_voters).count();
+
+	// A valid response has precommits showing it's impossible to have supermajority for the earlier
+	// finalized block on the other branch
+	if 3 * (prevotes_includes_block + absent_voters) <= 2 * num_voters {
 		None
 	} else {
 		// WIP(JON): return a proper response.

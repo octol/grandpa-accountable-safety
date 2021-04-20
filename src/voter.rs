@@ -19,7 +19,7 @@ use crate::{
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
 	protocol::{AccountableSafety, EquivocationDetected, Query},
-	voting::{check_precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
+	voting::{check_prevote_reply_is_valid, check_precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
 };
 use std::{collections::HashMap, fmt::Display};
 
@@ -33,6 +33,13 @@ pub struct Voter {
 	pub voting_rounds: VotingRounds,
 	pub actions: Vec<(TriggerAtTick, Action)>,
 	pub accountable_safety: Vec<AccountableSafety>,
+	pub behaviour: Option<Behaviour>,
+}
+
+// If present, controls the behavior of primaritly misbehaving entities
+pub enum Behaviour {
+	ReturnPrecommits,
+	ReturnPrevotes,
 }
 
 impl Voter {
@@ -41,6 +48,7 @@ impl Voter {
 		chain: Chain,
 		voter_set: VoterSet,
 		voting_rounds: VotingRounds,
+		behaviour: Option<Behaviour>,
 	) -> Self {
 		Self {
 			id,
@@ -49,6 +57,7 @@ impl Voter {
 			voting_rounds,
 			actions: Default::default(),
 			accountable_safety: Default::default(),
+			behaviour,
 		}
 	}
 
@@ -238,36 +247,61 @@ impl Voter {
 				}
 			}
 			Request::WhyDidEstimateForRoundNotIncludeBlock(round, block_not_included) => {
-				// WIP: We can either return Precommits of Prevotes
-
-				// This is a container of voting rounds, since some voters might have equivocated.
+				// This is a container of voting rounds, since some voters might have equivocated
+				// and have multiple parallel sets of histories that it presents to different
+				// voters.
 				let voting_rounds_for_previous_block =
 					self.voting_rounds.get(&(round - 1)).unwrap();
 
-				// Now if this is a equivocating voter, they will want to return the set of commits
-				// corresponding to the valid round.
-				//
-				// We make this choice by checking which of the sets of precommits are considered
-				// valid
-				let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
-					.iter()
-					.filter(|voting_round| {
-						check_precommit_reply_is_valid(
-							&voting_round.precommits,
-							block_not_included,
-							&self.voter_set.voter_ids(),
-							&self.chain,
-						)
-						.is_none()
-					})
-					.collect();
-				assert_eq!(valid_voting_round.len(), 1);
-				let valid_voting_round = valid_voting_round.into_iter().next().unwrap().clone();
+				match self.behaviour {
+					Some(Behaviour::ReturnPrecommits) | None => {
+						// Now if this is a equivocating voter, they will want to return the set of
+						// commits corresponding to the valid round.
+						//
+						// A simple way to make this choice is by checking which of the sets of
+						// precommits are considered valid
+						let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
+							.iter()
+							.filter(|voting_round| {
+								check_precommit_reply_is_valid(
+									&voting_round.precommits,
+									block_not_included,
+									&self.voter_set.voter_ids(),
+									&self.chain,
+								)
+								.is_none()
+							})
+							.collect();
+						assert_eq!(valid_voting_round.len(), 1);
+						let valid_voting_round = valid_voting_round.into_iter().next().unwrap().clone();
 
-				return vec![(
-					request.0,
-					Response::PrecommitsForEstimate(round, valid_voting_round.precommits),
-				)];
+						return vec![(
+							request.0,
+							Response::PrecommitsForEstimate(round, valid_voting_round.precommits),
+						)];
+					}
+					Some(Behaviour::ReturnPrevotes) => {
+						let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
+							.iter()
+							.filter(|voting_round| {
+								check_prevote_reply_is_valid(
+									&voting_round.prevotes,
+									block_not_included,
+									&self.voter_set.voter_ids(),
+									&self.chain,
+								)
+								.is_none()
+							})
+							.collect();
+						assert_eq!(valid_voting_round.len(), 1);
+						let valid_voting_round = valid_voting_round.into_iter().next().unwrap().clone();
+
+						return vec![(
+							request.0,
+							Response::PrevotesForEstimate(round, valid_voting_round.prevotes),
+						)];
+					}
+				}
 			}
 		}
 		Default::default()
@@ -300,6 +334,9 @@ impl Voter {
 						Action::AskVotersAboutEstimate(next_query),
 					));
 				}
+			}
+			Response::PrevotesForEstimate(round_number, ref prevotes) => {
+				todo!();
 			}
 		}
 	}

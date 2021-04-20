@@ -167,7 +167,7 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[0].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds),
+			Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds, None),
 		);
 	}
 	{
@@ -178,7 +178,7 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[1].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id, chain, voter_set.clone(), voting_rounds),
+			Voter::new(id, chain, voter_set.clone(), voting_rounds, None),
 		);
 	}
 	{
@@ -188,7 +188,7 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[2].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds),
+			Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds, None),
 		);
 	}
 	{
@@ -196,7 +196,7 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let mut voting_rounds = create_common_voting_rounds(&voter_set, &mut chain);
 		append_voting_rounds_b(&mut voting_rounds, &voter_set, &mut chain);
 		let id = names[3].to_string();
-		voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds));
+		voters.insert(id.clone(), Voter::new(id, chain, voter_set, voting_rounds, None));
 	}
 
 	// Kick off the simulation by having one voter broadcast all their commits, reveiling the conflicting
@@ -297,7 +297,7 @@ fn basic_example() {
 		world.tick();
 	}
 
-	// TODO(JON): Figure out where these duplications are coming from
+	// We get three sets of equivocations, one coming from each voter
 	assert_eq!(
 		world.equivocations_detected(),
 		&[

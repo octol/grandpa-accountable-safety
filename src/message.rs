@@ -17,7 +17,7 @@
 use crate::{
 	block::{Block, BlockNumber},
 	voter::VoterId,
-	voting::{Commit, Precommit, RoundNumber},
+	voting::{Commit, Precommit, Prevote, RoundNumber},
 };
 
 #[derive(Debug, Clone)]
@@ -31,6 +31,7 @@ pub enum Request {
 pub enum Response {
 	RequestBlock(BlockNumber),
 	PrecommitsForEstimate(RoundNumber, Vec<Precommit>),
+	PrevotesForEstimate(RoundNumber, Vec<Prevote>),
 }
 
 #[derive(Debug)]
