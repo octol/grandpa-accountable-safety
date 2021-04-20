@@ -18,9 +18,13 @@ use crate::{
 	action::{Action, TriggerAtTick},
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
-	protocol::{AccountableSafety, EquivocationDetected, Query},
-	voting::{check_prevote_reply_is_valid, check_precommit_reply_is_valid, Commit, VoterSet, VotingRounds},
+	protocol::{AccountableSafety, EquivocationDetected, Query, QueryResponse},
+	voting::{
+		check_precommit_reply_is_valid, check_prevote_reply_is_valid, Commit, VoterSet,
+		VotingRounds,
+	},
 };
+use itertools::Itertools;
 use std::{collections::HashMap, fmt::Display};
 
 pub type VoterName = &'static str;
@@ -36,7 +40,7 @@ pub struct Voter {
 	pub behaviour: Option<Behaviour>,
 }
 
-// If present, controls the behavior of primaritly misbehaving entities
+/// If present, controls the behavior of primarily misbehaving entities
 pub enum Behaviour {
 	ReturnPrecommits,
 	ReturnPrevotes,
@@ -78,6 +82,7 @@ impl Voter {
 	}
 
 	pub fn process_actions(&mut self, current_tick: usize) -> Vec<Message> {
+		// Get the actions we should act on, and remove them from the queue
 		let actions = self
 			.actions
 			.iter()
@@ -91,22 +96,7 @@ impl Voter {
 			match action {
 				Action::BroadcastCommits => {
 					println!("{}: broadcasting all our commits to all voters", self.id);
-					for voter in &self.voter_set.voters {
-						if *voter != self.id {
-							for commit in self.commits().values() {
-								let round =
-									self.chain.finalized_round(commit.target_number).unwrap();
-								messages.push(Message {
-									sender: self.id.clone(),
-									receiver: voter.to_string(),
-									content: Payload::Request(Request::HereIsCommit(
-										*round,
-										commit.clone(),
-									)),
-								});
-							}
-						}
-					}
+					messages.append(&mut self.create_broadcast_commit_messages());
 				}
 				Action::SendBlock(id, block_number) => {
 					println!("{}: send block {} to {}", self.id, block_number, id);
@@ -148,16 +138,12 @@ impl Voter {
 						receivers,
 						block_not_included,
 					} = query;
-
-					let _round_for_block_not_included =
-						self.chain.finalized_round(*block_not_included).unwrap();
-
 					for receiver in receivers {
 						println!(
 							"{}: asking {} about block {} and round {}",
 							self.id, receiver, block_not_included, round,
 						);
-						let msg = Message {
+						messages.push(Message {
 							sender: self.id.clone(),
 							receiver: receiver.clone(),
 							content: Payload::Request(
@@ -166,13 +152,32 @@ impl Voter {
 									*block_not_included,
 								),
 							),
-						};
-						messages.push(msg);
+						});
 					}
 				}
 			}
 		}
 		messages
+	}
+
+	fn create_broadcast_commit_messages(&mut self) -> Vec<Message> {
+		let receivers = self
+			.voter_set
+			.voters
+			.iter()
+			.filter(|voter| **voter != self.id);
+		let payloads_to_send = self.commits().values().map(|commit| {
+			let round = *self.chain.finalized_round(commit.target_number).unwrap();
+			Payload::Request(Request::HereIsCommit(round, commit.clone()))
+		});
+		receivers
+			.cartesian_product(payloads_to_send)
+			.map(|(receiver, payload)| Message {
+				sender: self.id.clone(),
+				receiver: receiver.to_string(),
+				content: payload.clone(),
+			})
+			.collect()
 	}
 
 	pub fn handle_request(
@@ -189,50 +194,57 @@ impl Voter {
 				}
 				println!("{}: received {}", self.id, commit);
 
+				// Requeue request for later if we don't yet know about the block, which we send out
+				// a request for.
 				if !self.chain.knows_about_block(commit.target_number) {
-					// Requeue request for later, when we hopefully know about the block
 					self.actions
 						.push((current_tick + 10, Action::RequeueRequest(request.clone())));
 					println!("{}: requesting block {}", self.id, commit.target_number);
 					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
 
-				for previous_commit in self.chain.commits().values() {
-					if !self
-						.chain
-						.is_descendent(commit.target_number, previous_commit.target_number)
-					{
-						println!(
-							"{}: received commit is not descendent of last finalized, \
-							triggering accountable safety protocol!",
-							self.id
-						);
+				let conflicting_commits: Vec<_> = self
+					.chain
+					.commits()
+					.values()
+					.filter(|previous_commit| {
+						!self
+							.chain
+							.is_descendent(commit.target_number, previous_commit.target_number)
+					})
+					.collect();
 
-						let block_not_included = previous_commit.target_number;
-						let round_for_block_not_included =
-							self.chain.finalized_round(block_not_included).unwrap();
-						let commit_for_block_not_included = previous_commit;
+				for previous_commit in conflicting_commits {
+					println!(
+						"{}: received commit is not descendent of {}, \
+						triggering accountable safety protocol!",
+						self.id, previous_commit,
+					);
+					// Setup and start accountable safety protocol instance
+					let block_not_included = previous_commit.target_number;
+					let round_for_block_not_included =
+						self.chain.finalized_round(block_not_included).unwrap();
+					let commit_for_block_not_included = previous_commit;
 
-						let mut accountable_safety_instance = AccountableSafety::start(
-							block_not_included,
-							*round_for_block_not_included,
-							commit_for_block_not_included.clone(),
-						);
+					let mut accountable_safety_instance = AccountableSafety::start(
+						block_not_included,
+						*round_for_block_not_included,
+						commit_for_block_not_included.clone(),
+					);
 
-						let voters_in_precommit = commit
-							.precommits
-							.iter()
-							.map(|pc| pc.id.to_string())
-							.collect::<Vec<VoterId>>();
+					// Create the first query
+					let voters_in_precommit = commit
+						.precommits
+						.iter()
+						.map(|pc| pc.id.to_string())
+						.collect::<Vec<VoterId>>();
+					let round_for_new_block = round_number;
+					let query = accountable_safety_instance
+						.start_query_round(round_for_new_block, voters_in_precommit);
+					self.actions
+						.push((current_tick + 10, Action::AskVotersAboutEstimate(query)));
 
-						let round_for_new_block = round_number;
-						let query = accountable_safety_instance
-							.start_query_round(round_for_new_block, voters_in_precommit);
-
-						self.accountable_safety.push(accountable_safety_instance);
-						self.actions
-							.push((current_tick + 10, Action::AskVotersAboutEstimate(query)));
-					}
+					self.accountable_safety.push(accountable_safety_instance);
 				}
 			}
 			Request::HereAreBlocks(blocks) => {
@@ -273,11 +285,15 @@ impl Voter {
 							})
 							.collect();
 						assert_eq!(valid_voting_round.len(), 1);
-						let valid_voting_round = valid_voting_round.into_iter().next().unwrap().clone();
+						let valid_voting_round =
+							valid_voting_round.into_iter().next().unwrap().clone();
 
 						return vec![(
 							request.0,
-							Response::PrecommitsForEstimate(round, valid_voting_round.precommits),
+							Response::ExplainEstimate(
+								round,
+								QueryResponse::Precommits(valid_voting_round.precommits),
+							),
 						)];
 					}
 					Some(Behaviour::ReturnPrevotes) => {
@@ -294,11 +310,15 @@ impl Voter {
 							})
 							.collect();
 						assert_eq!(valid_voting_round.len(), 1);
-						let valid_voting_round = valid_voting_round.into_iter().next().unwrap().clone();
+						let valid_voting_round =
+							valid_voting_round.into_iter().next().unwrap().clone();
 
 						return vec![(
 							request.0,
-							Response::PrevotesForEstimate(round, valid_voting_round.prevotes),
+							Response::ExplainEstimate(
+								round,
+								QueryResponse::Prevotes(valid_voting_round.prevotes),
+							),
 						)];
 					}
 				}
@@ -315,9 +335,14 @@ impl Voter {
 					Action::SendBlock(response.0, block_number),
 				));
 			}
-			Response::PrecommitsForEstimate(round_number, ref precommits) => {
+			Response::ExplainEstimate(round_number, ref query_response) => {
+				let precommits = match query_response {
+					QueryResponse::Precommits(precommits) => precommits,
+					QueryResponse::Prevotes(_) => todo!(),
+				};
+
 				println!(
-					"{}: handle PrecommitsForEstimate from {}: {}, {:?}",
+					"{}: handle ExplainEstimate from {}: {}, {:?}",
 					self.id, response.0, round_number, precommits
 				);
 				// WIP: assume a single instance
@@ -326,7 +351,12 @@ impl Voter {
 					.iter_mut()
 					.next()
 					.unwrap()
-					.add_response(round_number, response.0, precommits.clone(), &self.chain);
+					.add_response(
+						round_number,
+						response.0,
+						QueryResponse::Precommits(precommits.clone()),
+						&self.chain,
+					);
 
 				if let Some(next_query) = next_query {
 					self.actions.push((
@@ -334,9 +364,6 @@ impl Voter {
 						Action::AskVotersAboutEstimate(next_query),
 					));
 				}
-			}
-			Response::PrevotesForEstimate(round_number, ref prevotes) => {
-				todo!();
 			}
 		}
 	}

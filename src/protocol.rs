@@ -20,7 +20,7 @@ use crate::{
 	voter::VoterId,
 	voting::{
 		check_precommit_reply_is_valid, cross_check_precommit_reply_against_commit, Commit,
-		Precommit, RoundNumber,
+		Precommit, Prevote, RoundNumber,
 	},
 };
 use itertools::Itertools;
@@ -58,6 +58,12 @@ pub struct Query {
 	pub round: RoundNumber,
 	pub receivers: Vec<VoterId>,
 	pub block_not_included: BlockNumber,
+}
+
+#[derive(Debug, Clone)]
+pub enum QueryResponse {
+	Prevotes(Vec<Prevote>),
+	Precommits(Vec<Precommit>),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -111,9 +117,14 @@ impl AccountableSafety {
 		&mut self,
 		round: RoundNumber,
 		voter: VoterId,
-		precommits: Vec<Precommit>,
+		query_response: QueryResponse,
 		chain: &Chain,
 	) -> Option<Query> {
+		let precommits = match query_response {
+			QueryResponse::Precommits(precommits) => precommits,
+			QueryResponse::Prevotes(prevotes) => todo!(),
+		};
+
 		// Add response to the right QueryState in querying_rounds.
 		{
 			let querying_state = self.querying_rounds.get_mut(&round).unwrap();
@@ -140,7 +151,6 @@ impl AccountableSafety {
 			) {
 				let querying_state = self.querying_rounds.get_mut(&round).unwrap();
 				querying_state.equivocations.push(equivocations);
-				dbg!(&self);
 			};
 		} else {
 			// Start the next round if not already done

@@ -16,6 +16,7 @@
 
 use crate::{
 	block::{Block, BlockNumber},
+	protocol::QueryResponse,
 	voter::VoterId,
 	voting::{Commit, Precommit, Prevote, RoundNumber},
 };
@@ -30,11 +31,10 @@ pub enum Request {
 #[derive(Debug, Clone)]
 pub enum Response {
 	RequestBlock(BlockNumber),
-	PrecommitsForEstimate(RoundNumber, Vec<Precommit>),
-	PrevotesForEstimate(RoundNumber, Vec<Prevote>),
+	ExplainEstimate(RoundNumber, QueryResponse),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Payload {
 	Request(Request),
 	Response(Response),
