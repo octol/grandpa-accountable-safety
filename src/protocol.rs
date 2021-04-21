@@ -233,6 +233,7 @@ impl AccountableSafety {
 					}
 				}
 				QueryResponse::Prevotes(_) => {
+					println!("ask all precommit voter in commit what prevotes they've seen");
 					// Ask all precommit voters in commit what prevotes they've seen
 					let next_round_to_investigate = round - 1;
 
@@ -243,6 +244,7 @@ impl AccountableSafety {
 					{
 						let voters_in_commit: Vec<VoterId> =
 							self.commit_for_block_not_included.ids().collect();
+						dbg!(&voters_in_commit);
 
 						return Some(NextQuery::PrevotesForRound(
 							self.start_prevote_query(next_round_to_investigate, voters_in_commit),
@@ -281,26 +283,20 @@ impl AccountableSafety {
 		query_response: QueryResponse,
 		chain: &Chain,
 	) -> Option<NextQuery> {
+		println!("add_prevote_response");
 		// Add the response first
 		{
 			let querying_state = self.prevote_queries.get_mut(&round).unwrap();
 			let voters = querying_state.voters.clone();
-			if let Some(invalid_response) = check_query_reply_is_valid(
-				&query_response,
-				self.block_not_included,
-				&voters,
-				&chain,
-			) {
-				querying_state.equivocations.push(invalid_response);
-				return None;
-			} else {
-				querying_state.add_response(voter, query_response.clone());
-			}
+			querying_state.add_response(voter, query_response.clone());
 		}
 
 		match query_response {
 			QueryResponse::Prevotes(prevotes) => {
-				let previous_responses = self.querying_rounds.get(&round).unwrap();
+				dbg!(&prevotes);
+				dbg!(&round);
+				let previous_round = round + 1;
+				let previous_responses = self.querying_rounds.get(&previous_round).unwrap();
 				let previous_prevote_replies = previous_responses.responses.iter().flat_map(|response| {
 					match response.1 {
 						QueryResponse::Precommits(_) => panic!(),
@@ -327,16 +323,25 @@ impl AccountableSafety {
 				}
 			}
 			QueryResponse::Precommits(_) => {
-				todo!("This is an invalid response! Malicious voter?")
+				panic!("This is an invalid response! Malicious voter?")
 			}
 		}
 		None
 	}
 
 	pub fn equivocations_detected(&self) -> Vec<EquivocationDetected> {
-		self.querying_rounds
+		let mut equivocations: Vec<_> = self.querying_rounds
 			.values()
 			.flat_map(|query_state| query_state.equivocations.clone())
-			.collect()
+			.collect();
+
+		let mut prevote_equivocations = self.prevote_queries
+			.values()
+			.flat_map(|query_state| query_state.equivocations.clone())
+			.collect();
+		dbg!(&self.prevote_queries);
+
+		equivocations.append(&mut prevote_equivocations);
+		equivocations
 	}
 }

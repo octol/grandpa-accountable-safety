@@ -373,34 +373,34 @@ fn basic_example_with_prevotes() {
 	assert_eq!(
 		world.equivocations_detected(),
 		&[
-			EquivocationDetected::Precommit(vec![
+			EquivocationDetected::Prevote(vec![
 				Equivocation {
 					voter: "Alice".to_string(),
-					blocks: vec![1, 2],
+					blocks: vec![4],
 				},
 				Equivocation {
 					voter: "Bob".to_string(),
-					blocks: vec![1, 2],
+					blocks: vec![4],
 				}
 			]),
-			EquivocationDetected::Precommit(vec![
+			EquivocationDetected::Prevote(vec![
 				Equivocation {
 					voter: "Alice".to_string(),
-					blocks: vec![1, 2],
+					blocks: vec![4],
 				},
 				Equivocation {
 					voter: "Bob".to_string(),
-					blocks: vec![1, 2],
+					blocks: vec![4],
 				}
 			]),
-			EquivocationDetected::Precommit(vec![
+			EquivocationDetected::Prevote(vec![
 				Equivocation {
 					voter: "Alice".to_string(),
-					blocks: vec![1, 2],
+					blocks: vec![4],
 				},
 				Equivocation {
 					voter: "Bob".to_string(),
-					blocks: vec![1, 2],
+					blocks: vec![4],
 				}
 			])
 		],

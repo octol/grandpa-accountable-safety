@@ -260,18 +260,29 @@ pub fn check_query_reply_is_valid(
 
 // Cross check against precommitters in commit message
 pub fn cross_check_precommit_reply_against_commit(
-	s: &Vec<Precommit>,
+	precommits: &Vec<Precommit>,
 	commit: Commit,
 ) -> Option<EquivocationDetected> {
 	let mut equivocations = Vec::new();
 
-	for precommit in &commit.precommits {
-		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == precommit.id).collect();
+	dbg!(&precommits);
+	dbg!(&commit);
+
+	for commit_precommit in &commit.precommits {
+		let equivocated_votes: Vec<_> = precommits
+			.iter()
+			.filter(|precommit| {
+				precommit.id == commit_precommit.id
+					&& precommit.target_number != commit_precommit.target_number
+			})
+			.collect();
+
+		dbg!(&equivocated_votes);
 
 		if !equivocated_votes.is_empty() {
 			print!(
 				"Precommit equivocation detected: voter {} for blocks {}",
-				precommit.id, precommit.target_number
+				commit_precommit.id, commit_precommit.target_number
 			);
 			equivocated_votes.iter().for_each(|e| {
 				print!(", {}", e.target_number);
@@ -282,7 +293,7 @@ pub fn cross_check_precommit_reply_against_commit(
 				.iter()
 				.map(|precommit| Equivocation {
 					voter: precommit.id.to_string(),
-					blocks: vec![precommit.target_number, commit.target_number],
+					blocks: vec![precommit.target_number, commit_precommit.target_number],
 				})
 				.collect();
 
@@ -333,4 +344,77 @@ pub fn cross_check_prevote_reply_against_prevotes_seen(
 	} else {
 		Some(EquivocationDetected::Prevote(equivocations))
 	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn cross_check_precommits1() {
+		let precommits = vec![
+			Precommit {
+				target_number: 1,
+				id: "Alice",
+			},
+			Precommit {
+				target_number: 1,
+				id: "Bob",
+			},
+		];
+		let commit = Commit {
+			target_number: 1,
+			precommits: vec![
+				Precommit {
+					target_number: 1,
+					id: "Alice",
+				},
+				Precommit {
+					target_number: 1,
+					id: "Bob",
+				},
+			],
+		};
+		assert_eq!(
+			cross_check_precommit_reply_against_commit(&precommits, commit),
+			None
+		);
+	}
+
+	#[test]
+	fn cross_check_precommits2() {
+		let precommits = vec![
+			Precommit {
+				target_number: 1,
+				id: "Alice",
+			},
+			Precommit {
+				target_number: 1,
+				id: "Bob",
+			},
+		];
+		let commit = Commit {
+			target_number: 1,
+			precommits: vec![
+				Precommit {
+					target_number: 2,
+					id: "Alice",
+				},
+				Precommit {
+					target_number: 1,
+					id: "Bob",
+				},
+			],
+		};
+		assert_eq!(
+			cross_check_precommit_reply_against_commit(&precommits, commit),
+			Some(EquivocationDetected::Precommit(vec![Equivocation {
+				voter: "Alice".to_string(),
+				blocks: vec![1, 2],
+			}])),
+		)
+	}
+
+	#[test]
+	fn cross_check_prevotes() {}
 }
