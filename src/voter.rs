@@ -19,7 +19,7 @@ use crate::{
 	block::BlockNumber,
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
-	protocol::{AccountableSafety, EquivocationDetected, Query, QueryResponse},
+	protocol::{AccountableSafety, EquivocationDetected, NextQuery, Query, QueryResponse},
 	voting::{check_query_reply_is_valid, Commit, VoterSet, VotingRounds},
 };
 use itertools::Itertools;
@@ -149,6 +149,28 @@ impl Voter {
 								Request::WhyDidEstimateForRoundNotIncludeBlock(
 									*round,
 									*block_not_included,
+								),
+							),
+						});
+					}
+				}
+				Action::AskVotersWhichPrevotesSeen(query) => {
+					let Query {
+						round,
+						receivers,
+						block_not_included,
+					} = query;
+					for receiver in receivers {
+						println!(
+							"{}: asking {} about prevotes seen in round {}",
+							self.id, receiver, round,
+						);
+						messages.push(Message {
+							sender: self.id.clone(),
+							receiver: receiver.clone(),
+							content: Payload::Request(
+								Request::WhichPrevotesSeenInRound(
+									*round,
 								),
 							),
 						});
@@ -297,6 +319,9 @@ impl Voter {
 				};
 				return vec![(request.0, Response::ExplainEstimate(round, response))];
 			}
+			Request::WhichPrevotesSeenInRound(round) => {
+				todo!();
+			}
 		}
 		Default::default()
 	}
@@ -344,11 +369,21 @@ impl Voter {
 					.unwrap()
 					.add_response(round_number, response.0, query_response, &self.chain);
 
-				if let Some(next_query) = next_query {
-					self.actions.push((
-						current_tick + 10,
-						Action::AskVotersAboutEstimate(next_query),
-					));
+				match next_query {
+					Some(NextQuery::AskAboutRound(next_query)) => {
+						self.actions.push((
+							current_tick + 10,
+							Action::AskVotersAboutEstimate(next_query),
+						));
+					}
+					Some(NextQuery::PrevotesForRound(next_query)) => {
+						todo!();
+						self.actions.push((
+							current_tick + 10,
+							Action::AskVotersWhichPrevotesSeen(next_query)
+						));
+					}
+					_ => (),
 				}
 			}
 		}

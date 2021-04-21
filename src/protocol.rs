@@ -52,6 +52,11 @@ impl QueryState {
 	}
 }
 
+pub enum NextQuery {
+	AskAboutRound(Query),
+	PrevotesForRound(Query),
+}
+
 // Query sent to the voters for a specific round
 #[derive(Debug, Clone)]
 pub struct Query {
@@ -145,7 +150,7 @@ impl AccountableSafety {
 		voter: VoterId,
 		query_response: QueryResponse,
 		chain: &Chain,
-	) -> Option<Query> {
+	) -> Option<NextQuery> {
 		// Add response to the right QueryState in querying_rounds.
 		{
 			let querying_state = self.querying_rounds.get_mut(&round).unwrap();
@@ -205,9 +210,9 @@ impl AccountableSafety {
 					.map(|id| id.to_string())
 					.unique()
 					.collect();
-				return Some(
+				return Some(NextQuery::AskAboutRound(
 					self.start_query_round(next_round_to_investigate, voters_in_precommits),
-				);
+				));
 			}
 		}
 

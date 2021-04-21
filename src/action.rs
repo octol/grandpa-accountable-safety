@@ -24,4 +24,5 @@ pub enum Action {
 	SendBlock(VoterId, BlockNumber),
 	RequeueRequest((VoterId, Request)),
 	AskVotersAboutEstimate(Query),
+	AskVotersWhichPrevotesSeen(Query),
 }

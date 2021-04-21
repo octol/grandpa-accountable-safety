@@ -26,6 +26,7 @@ pub enum Request {
 	HereIsCommit(RoundNumber, Commit),
 	HereAreBlocks(Vec<Block>),
 	WhyDidEstimateForRoundNotIncludeBlock(RoundNumber, BlockNumber),
+	WhichPrevotesSeenInRound(RoundNumber),
 }
 
 #[derive(Debug, Clone)]
