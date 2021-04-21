@@ -330,16 +330,12 @@ impl Voter {
 					Action::SendBlock(response.0, block_number),
 				));
 			}
-			Response::ExplainEstimate(round_number, ref query_response) => {
-				let precommits = match query_response {
-					QueryResponse::Precommits(precommits) => precommits,
-					QueryResponse::Prevotes(_) => todo!(),
-				};
-
+			Response::ExplainEstimate(round_number, query_response) => {
 				println!(
 					"{}: handle ExplainEstimate from {}: {}, {:?}",
-					self.id, response.0, round_number, precommits
+					self.id, response.0, round_number, query_response
 				);
+
 				// WIP: assume a single instance
 				let next_query = self
 					.accountable_safety
@@ -349,7 +345,7 @@ impl Voter {
 					.add_response(
 						round_number,
 						response.0,
-						QueryResponse::Precommits(precommits.clone()),
+						query_response,
 						&self.chain,
 					);
 

@@ -42,18 +42,13 @@ pub struct AccountableSafety {
 struct QueryState {
 	round: RoundNumber,
 	voters: Vec<VoterId>,
-	responses: BTreeMap<VoterId, Vec<Precommit>>,
+	responses: BTreeMap<VoterId, QueryResponse>,
 	equivocations: Vec<EquivocationDetected>,
 }
 
 impl QueryState {
 	fn add_response(&mut self, voter: VoterId, query_response: QueryResponse) {
-		match query_response {
-			QueryResponse::Prevotes(_) => todo!(),
-			QueryResponse::Precommits(precommits) => {
-				self.responses.insert(voter, precommits);
-			}
-		}
+		self.responses.insert(voter, query_response);
 	}
 }
 
@@ -166,14 +161,13 @@ impl AccountableSafety {
 			}
 		}
 
-		let precommits = match query_response {
-			QueryResponse::Precommits(precommits) => precommits.clone(),
-			QueryResponse::Prevotes(_) => todo!(),
-		};
-
 		// Was this for the round directly after the round where the block that should have been
 		// included, but wasn't, was finalized?
 		if round == self.round_for_block_not_included + 1 {
+			let precommits = match query_response {
+				QueryResponse::Precommits(precommits) => precommits.clone(),
+				QueryResponse::Prevotes(_) => todo!(),
+			};
 			if let Some(equivocations) = cross_check_precommit_reply_against_commit(
 				&precommits,
 				self.commit_for_block_not_included.clone(),
@@ -185,14 +179,15 @@ impl AccountableSafety {
 			// Start the next round if not already done
 			let next_round_to_investigate = round - 1;
 
-			// WIP(JON): more receivers might show up in later responses.
+			// WIP: more receivers might show up in later responses.
 			if !self
 				.querying_rounds
 				.contains_key(&next_round_to_investigate)
 			{
-				let voters_in_precommits: Vec<_> = precommits
-					.iter()
-					.map(|pre| pre.id.to_string())
+				let voters_in_precommits = query_response
+					.ids()
+					.into_iter()
+					.map(|id| id.to_string())
 					.unique()
 					.collect();
 				return Some(

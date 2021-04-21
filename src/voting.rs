@@ -239,7 +239,7 @@ pub fn check_query_reply_is_valid(
 	if 3 * (prevotes_includes_block + absent_voters) <= 2 * num_voters {
 		None
 	} else {
-		// WIP(JON): return a proper response.
+		// WIP: return a proper response.
 		// We can't have a todo! here as the Byzantine voter logic uses the return value to
 		// determine which response to send.
 		Some(EquivocationDetected::InvalidResponse(

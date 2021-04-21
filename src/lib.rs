@@ -52,7 +52,7 @@
 //! In other words, when E_{r,v} contains everything that could have been finalized in round r.
 //!
 //! E_{r,v} having supermajority means that E_{r,v} < g(V_{r,v}).
-//! WIP(JON): how?
+//! (WIP: how?)
 //!
 //! Outline of the Procedure
 //! ========================
