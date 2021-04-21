@@ -17,9 +17,9 @@
 use crate::{
 	block::BlockNumber,
 	chain::Chain,
-	voter::VoterId,
+	voter::{VoterId, VoterName},
 	voting::{
-		check_precommit_reply_is_valid, cross_check_precommit_reply_against_commit, Commit,
+		check_query_reply_is_valid, cross_check_precommit_reply_against_commit, Commit,
 		Precommit, Prevote, RoundNumber,
 	},
 };
@@ -47,8 +47,13 @@ struct QueryState {
 }
 
 impl QueryState {
-	fn add_response(&mut self, voter: VoterId, precommits: Vec<Precommit>) {
-		self.responses.insert(voter, precommits);
+	fn add_response(&mut self, voter: VoterId, query_response: QueryResponse) {
+		match query_response {
+			QueryResponse::Prevotes(_) => todo!(),
+			QueryResponse::Precommits(precommits) => {
+				self.responses.insert(voter, precommits);
+			}
+		}
 	}
 }
 
@@ -64,6 +69,30 @@ pub struct Query {
 pub enum QueryResponse {
 	Prevotes(Vec<Prevote>),
 	Precommits(Vec<Precommit>),
+}
+
+impl QueryResponse {
+	pub fn ids(&self) -> Vec<VoterName> {
+		match self {
+			QueryResponse::Prevotes(prevotes) => {
+				prevotes.iter().map(|prevote| prevote.id).collect()
+			}
+			QueryResponse::Precommits(precommits) => {
+				precommits.iter().map(|precommit| precommit.id).collect()
+			}
+		}
+	}
+
+	pub fn target_numbers(&self) -> Vec<BlockNumber> {
+		match self {
+			QueryResponse::Prevotes(prevotes) => {
+				prevotes.iter().map(|prevote| prevote.target_number).collect()
+			}
+			QueryResponse::Precommits(precommits) => {
+				precommits.iter().map(|precommit| precommit.target_number).collect()
+			}
+		}
+	}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -120,17 +149,12 @@ impl AccountableSafety {
 		query_response: QueryResponse,
 		chain: &Chain,
 	) -> Option<Query> {
-		let precommits = match query_response {
-			QueryResponse::Precommits(precommits) => precommits,
-			QueryResponse::Prevotes(prevotes) => todo!(),
-		};
-
 		// Add response to the right QueryState in querying_rounds.
 		{
 			let querying_state = self.querying_rounds.get_mut(&round).unwrap();
 			let voters = querying_state.voters.clone();
-			if let Some(invalid_response) = check_precommit_reply_is_valid(
-				&precommits,
+			if let Some(invalid_response) = check_query_reply_is_valid(
+				query_response.clone(),
 				self.block_not_included,
 				&voters,
 				&chain,
@@ -138,9 +162,14 @@ impl AccountableSafety {
 				querying_state.equivocations.push(invalid_response);
 				return None;
 			} else {
-				querying_state.add_response(voter, precommits.clone());
+				querying_state.add_response(voter, query_response.clone());
 			}
 		}
+
+		let precommits = match query_response {
+			QueryResponse::Precommits(precommits) => precommits.clone(),
+			QueryResponse::Prevotes(_) => todo!(),
+		};
 
 		// Was this for the round directly after the round where the block that should have been
 		// included, but wasn't, was finalized?

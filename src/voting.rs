@@ -17,7 +17,7 @@
 use crate::{
 	block::BlockNumber,
 	chain::Chain,
-	protocol::{Equivocation, EquivocationDetected},
+	protocol::{Equivocation, EquivocationDetected, QueryResponse},
 	voter::{VoterId, VoterName},
 };
 use itertools::Itertools;
@@ -200,92 +200,33 @@ impl Display for Commit {
 	}
 }
 
-// Check the validity of a response containing precommits.
-// The purpose of the response is to return a set of precommits showing it is impossible to have a
+// Check the validity of a response.
+// The purpose of the response is to return a set of votes showing it is impossible to have a
 // supermajority for the given block.
-pub fn check_precommit_reply_is_valid(
-	response: &[Precommit],
+pub fn check_query_reply_is_valid(
+	response: QueryResponse,
 	block: BlockNumber,
 	voters: &[VoterId],
 	chain: &Chain,
 ) -> Option<EquivocationDetected> {
-	// Count equivocations in response
-	let mut voters_in_response = HashMap::new();
-	for precommit in response {
-		voters_in_response
-			.entry(precommit.id)
-			.or_insert(vec![])
-			.push(precommit);
-	}
-
 	let unique_voters: HashSet<VoterId> = response
-		.iter()
-		.map(|pre| pre.id.to_string())
+		.ids()
+		.into_iter()
+		.map(|id| id.to_string())
 		.unique()
 		.collect();
 
-	let num_equivocations_in_precommit = response.iter().count() - unique_voters.iter().count();
-	if num_equivocations_in_precommit > 0 {
-		todo!();
-		//return EquivocationDetected::Precommit(equ);
-	}
-
-	// Check impossible to have supermajority for the block
-	let precommits_includes_block = response
-		.iter()
-		.filter(|precommit| chain.block_includes(precommit.target_number, block))
-		.count();
-
-	// + Add absent votes
-	let voters = voters.iter().cloned().collect::<HashSet<_>>();
-	let num_voters = voters.len();
-	let absent_voters = voters.difference(&unique_voters).count();
-
-	// A valid response has precommits showing it's impossible to have supermajority for the earlier
-	// finalized block on the other branch
-	if 3 * (precommits_includes_block + absent_voters) <= 2 * num_voters {
-		None
-	} else {
-		// WIP(JON): return a proper response.
-		// We can't have a todo! here as the bad voter logic uses the return value.
-		Some(EquivocationDetected::InvalidResponse(
-			"placeholder".to_string(),
-		))
-	}
-}
-
-// WIP(JON): generalize and merge this function with the one for precommits
-pub fn check_prevote_reply_is_valid(
-	response: &[Prevote],
-	block: BlockNumber,
-	voters: &[VoterId],
-	chain: &Chain,
-) -> Option<EquivocationDetected> {
-	// Count equivocations in response
-	let mut voters_in_response = HashMap::new();
-	for prevote in response {
-		voters_in_response
-			.entry(prevote.id)
-			.or_insert(vec![])
-			.push(prevote);
-	}
-
-	let unique_voters: HashSet<VoterId> = response
-		.iter()
-		.map(|pre| pre.id.to_string())
-		.unique()
-		.collect();
-
-	let num_equivocations_in_precommit = response.iter().count() - unique_voters.iter().count();
-	if num_equivocations_in_precommit > 0 {
-		todo!();
-		//return EquivocationDetected::Precommit(equ);
+	let num_equivocations_in_response =
+		response.ids().iter().count() - unique_voters.iter().count();
+	if num_equivocations_in_response > 0 {
+		todo!("Equivocation detected!");
 	}
 
 	// Check impossible to have supermajority for the block
 	let prevotes_includes_block = response
-		.iter()
-		.filter(|prevote| chain.block_includes(prevote.target_number, block))
+		.target_numbers()
+		.into_iter()
+		.filter(|target_number| chain.block_includes(*target_number, block))
 		.count();
 
 	// + Add absent votes
@@ -293,13 +234,14 @@ pub fn check_prevote_reply_is_valid(
 	let num_voters = voters.len();
 	let absent_voters = voters.difference(&unique_voters).count();
 
-	// A valid response has precommits showing it's impossible to have supermajority for the earlier
+	// A valid response has votes showing it's impossible to have supermajority for the earlier
 	// finalized block on the other branch
 	if 3 * (prevotes_includes_block + absent_voters) <= 2 * num_voters {
 		None
 	} else {
 		// WIP(JON): return a proper response.
-		// We can't have a todo! here as the bad voter logic uses the return value.
+		// We can't have a todo! here as the Byzantine voter logic uses the return value to
+		// determine which response to send.
 		Some(EquivocationDetected::InvalidResponse(
 			"placeholder".to_string(),
 		))

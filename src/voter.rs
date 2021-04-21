@@ -20,8 +20,7 @@ use crate::{
 	message::{Message, Payload, Request, Response},
 	protocol::{AccountableSafety, EquivocationDetected, Query, QueryResponse},
 	voting::{
-		check_precommit_reply_is_valid, check_prevote_reply_is_valid, Commit, VoterSet,
-		VotingRounds,
+		check_query_reply_is_valid, Commit, VoterSet, VotingRounds,
 	},
 };
 use itertools::Itertools;
@@ -266,6 +265,7 @@ impl Voter {
 					self.voting_rounds.get(&(round - 1)).unwrap();
 
 				match self.behaviour {
+					// Returning commits is also the default behaviour.
 					Some(Behaviour::ReturnPrecommits) | None => {
 						// Now if this is a equivocating voter, they will want to return the set of
 						// commits corresponding to the valid round.
@@ -275,8 +275,8 @@ impl Voter {
 						let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
 							.iter()
 							.filter(|voting_round| {
-								check_precommit_reply_is_valid(
-									&voting_round.precommits,
+								check_query_reply_is_valid(
+									QueryResponse::Precommits(voting_round.precommits.clone()),
 									block_not_included,
 									&self.voter_set.voter_ids(),
 									&self.chain,
@@ -300,8 +300,8 @@ impl Voter {
 						let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
 							.iter()
 							.filter(|voting_round| {
-								check_prevote_reply_is_valid(
-									&voting_round.prevotes,
+								check_query_reply_is_valid(
+									QueryResponse::Prevotes(voting_round.prevotes.clone()),
 									block_not_included,
 									&self.voter_set.voter_ids(),
 									&self.chain,
