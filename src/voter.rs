@@ -314,7 +314,18 @@ impl Voter {
 				return vec![(request.0, Response::ExplainEstimate(round, response))];
 			}
 			Request::WhichPrevotesSeenInRound(round) => {
-				todo!();
+				let voting_rounds = self.voting_rounds.get(&round).unwrap();
+				if voting_rounds.len() > 1 {
+					// We have two rounds that we voted in here, so lets keep quiet
+					// WIP: consider alternative ways to answer
+					return Vec::new();
+				} else {
+					let prevotes = voting_rounds.into_iter().next().unwrap().prevotes.clone();
+					return vec![(
+						request.0,
+						Response::PrevotesSeen(round, QueryResponse::Prevotes(prevotes)),
+					)];
+				}
 			}
 		}
 		Default::default()
@@ -374,6 +385,19 @@ impl Voter {
 				if let Some(next_action) = next_action {
 					self.actions.push((current_tick + 10, next_action));
 				}
+			}
+			Response::PrevotesSeen(round_number, query_response) => {
+				println!(
+					"{}: handle PrevotesSeen from {}: {}, {:?}",
+					self.id, response.0, round_number, query_response,
+				);
+
+				// WIP: assume a single instance
+				self.accountable_safety
+					.iter_mut()
+					.next()
+					.unwrap()
+					.add_prevote_response(round_number, response.0, query_response, &self.chain);
 			}
 		}
 	}

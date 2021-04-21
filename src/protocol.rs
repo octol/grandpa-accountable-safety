@@ -19,8 +19,8 @@ use crate::{
 	chain::Chain,
 	voter::{VoterId, VoterName},
 	voting::{
-		check_query_reply_is_valid, cross_check_precommit_reply_against_commit, Commit, Precommit,
-		Prevote, RoundNumber,
+		check_query_reply_is_valid, cross_check_precommit_reply_against_commit,
+		cross_check_prevote_reply_against_prevotes_seen, Commit, Precommit, Prevote, RoundNumber,
 	},
 };
 use itertools::Itertools;
@@ -271,6 +271,65 @@ impl AccountableSafety {
 			}
 		}
 
+		None
+	}
+
+	pub fn add_prevote_response(
+		&mut self,
+		round: RoundNumber,
+		voter: VoterId,
+		query_response: QueryResponse,
+		chain: &Chain,
+	) -> Option<NextQuery> {
+		// Add the response first
+		{
+			let querying_state = self.prevote_queries.get_mut(&round).unwrap();
+			let voters = querying_state.voters.clone();
+			if let Some(invalid_response) = check_query_reply_is_valid(
+				&query_response,
+				self.block_not_included,
+				&voters,
+				&chain,
+			) {
+				querying_state.equivocations.push(invalid_response);
+				return None;
+			} else {
+				querying_state.add_response(voter, query_response.clone());
+			}
+		}
+
+		match query_response {
+			QueryResponse::Prevotes(prevotes) => {
+				let previous_responses = self.querying_rounds.get(&round).unwrap();
+				let previous_prevote_replies = previous_responses.responses.iter().flat_map(|response| {
+					match response.1 {
+						QueryResponse::Precommits(_) => panic!(),
+						QueryResponse::Prevotes(prevotes) => prevotes,
+					}
+				})
+				.cloned()
+				.collect();
+
+				if let Some(equivocations) = cross_check_prevote_reply_against_prevotes_seen(
+					prevotes,
+					previous_prevote_replies,
+				) {
+					self.prevote_queries
+						.get_mut(&round)
+						.unwrap()
+						.equivocations
+						.push(equivocations);
+				} else {
+					panic!(
+						"Reaching the end of the accountable safety protocol without \
+						finding any equivocators!"
+					);
+				}
+			}
+			QueryResponse::Precommits(_) => {
+				todo!("This is an invalid response! Malicious voter?")
+			}
+		}
 		None
 	}
 

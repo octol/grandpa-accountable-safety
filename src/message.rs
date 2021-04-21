@@ -33,6 +33,7 @@ pub enum Request {
 pub enum Response {
 	RequestBlock(BlockNumber),
 	ExplainEstimate(RoundNumber, QueryResponse),
+	PrevotesSeen(RoundNumber, QueryResponse),
 }
 
 #[derive(Debug, Clone)]

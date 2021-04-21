@@ -296,9 +296,16 @@ pub fn cross_check_precommit_reply_against_commit(
 	}
 }
 
-pub fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<Prevote>) {
-	for prevote in &t {
-		let equivocated_votes: Vec<_> = s.iter().filter(|pre| pre.id == prevote.id).collect();
+pub fn cross_check_prevote_reply_against_prevotes_seen(
+	prevote_reply: Vec<Prevote>,
+	prevotes_seen: Vec<Prevote>,
+) -> Option<EquivocationDetected> {
+	let mut equivocations = Vec::new();
+	for prevote in &prevotes_seen {
+		let equivocated_votes: Vec<_> = prevote_reply
+			.iter()
+			.filter(|pre| pre.id == prevote.id)
+			.collect();
 
 		if !equivocated_votes.is_empty() {
 			print!(
@@ -309,6 +316,21 @@ pub fn cross_check_prevote_reply_against_prevotes_seen(s: Vec<Prevote>, t: Vec<P
 				print!(", {}", e.target_number);
 			});
 			println!();
+
+			let mut new_equivocations = equivocated_votes
+				.iter()
+				.map(|prevote| Equivocation {
+					voter: prevote.id.to_string(),
+					blocks: vec![prevote.target_number],
+				})
+				.collect();
+
+			equivocations.append(&mut new_equivocations);
 		}
+	}
+	if equivocations.is_empty() {
+		None
+	} else {
+		Some(EquivocationDetected::Prevote(equivocations))
 	}
 }
