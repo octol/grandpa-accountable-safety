@@ -18,7 +18,7 @@ use crate::{
 	block::{Block, BlockNumber},
 	protocol::QueryResponse,
 	voter::VoterId,
-	voting::{Commit, Precommit, Prevote, RoundNumber},
+	voting::{Commit, RoundNumber},
 };
 
 #[derive(Debug, Clone)]

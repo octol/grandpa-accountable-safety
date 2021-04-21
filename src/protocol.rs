@@ -154,7 +154,7 @@ impl AccountableSafety {
 			let querying_state = self.querying_rounds.get_mut(&round).unwrap();
 			let voters = querying_state.voters.clone();
 			if let Some(invalid_response) = check_query_reply_is_valid(
-				query_response.clone(),
+				&query_response,
 				self.block_not_included,
 				&voters,
 				&chain,

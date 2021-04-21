@@ -16,12 +16,11 @@
 
 use crate::{
 	action::{Action, TriggerAtTick},
+	block::BlockNumber,
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
 	protocol::{AccountableSafety, EquivocationDetected, Query, QueryResponse},
-	voting::{
-		check_query_reply_is_valid, Commit, VoterSet, VotingRounds,
-	},
+	voting::{check_query_reply_is_valid, Commit, VoterSet, VotingRounds},
 };
 use itertools::Itertools;
 use std::{collections::HashMap, fmt::Display};
@@ -203,6 +202,7 @@ impl Voter {
 					return vec![(request.0, Response::RequestBlock(commit.target_number))];
 				}
 
+				// Find if any of our already known commits are conflicting with this new commit.
 				let conflicting_commits: Vec<_> = self
 					.chain
 					.commits()
@@ -214,6 +214,8 @@ impl Voter {
 					})
 					.collect();
 
+				// For each of these mutually conflicting commits we start up the accountable safety
+				// protocol
 				for previous_commit in conflicting_commits {
 					println!(
 						"{}: received commit is not descendent of {}, \
@@ -265,7 +267,7 @@ impl Voter {
 				let voting_rounds_for_previous_block =
 					self.voting_rounds.get(&(round - 1)).unwrap();
 
-				match self.behaviour {
+				let response = match self.behaviour {
 					// Returning commits is also the default behaviour.
 					Some(Behaviour::ReturnPrecommits) | None => {
 						// Now if this is a equivocating voter, they will want to return the set of
@@ -273,59 +275,51 @@ impl Voter {
 						//
 						// A simple way to make this choice is by checking which of the sets of
 						// precommits are considered valid
-						let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
-							.iter()
-							.filter(|voting_round| {
-								check_query_reply_is_valid(
-									QueryResponse::Precommits(voting_round.precommits.clone()),
-									block_not_included,
-									&self.voter_set.voter_ids(),
-									&self.chain,
-								)
-								.is_none()
-							})
-							.collect();
-						assert_eq!(valid_voting_round.len(), 1);
-						let valid_voting_round =
-							valid_voting_round.into_iter().next().unwrap().clone();
-
-						return vec![(
-							request.0,
-							Response::ExplainEstimate(
-								round,
-								QueryResponse::Precommits(valid_voting_round.precommits),
-							),
-						)];
+						let potential_query_responses =
+							voting_rounds_for_previous_block.iter().map(|voting_round| {
+								QueryResponse::Precommits(voting_round.precommits.clone())
+							});
+						self.select_valid_query_response(
+							potential_query_responses,
+							block_not_included,
+						)
 					}
 					Some(Behaviour::ReturnPrevotes) => {
-						let valid_voting_round: Vec<_> = voting_rounds_for_previous_block
-							.iter()
-							.filter(|voting_round| {
-								check_query_reply_is_valid(
-									QueryResponse::Prevotes(voting_round.prevotes.clone()),
-									block_not_included,
-									&self.voter_set.voter_ids(),
-									&self.chain,
-								)
-								.is_none()
-							})
-							.collect();
-						assert_eq!(valid_voting_round.len(), 1);
-						let valid_voting_round =
-							valid_voting_round.into_iter().next().unwrap().clone();
-
-						return vec![(
-							request.0,
-							Response::ExplainEstimate(
-								round,
-								QueryResponse::Prevotes(valid_voting_round.prevotes),
-							),
-						)];
+						let potential_query_responses =
+							voting_rounds_for_previous_block.iter().map(|voting_round| {
+								QueryResponse::Prevotes(voting_round.prevotes.clone())
+							});
+						self.select_valid_query_response(
+							potential_query_responses,
+							block_not_included,
+						)
 					}
-				}
+				};
+				return vec![(request.0, Response::ExplainEstimate(round, response))];
 			}
 		}
 		Default::default()
+	}
+
+	fn select_valid_query_response(
+		&self,
+		potential_query_responses: impl Iterator<Item = QueryResponse>,
+		block_not_included: BlockNumber,
+	) -> QueryResponse {
+		let valid_voting_round: Vec<_> = potential_query_responses
+			.filter(|response| {
+				check_query_reply_is_valid(
+					response,
+					block_not_included,
+					&self.voter_set.voter_ids(),
+					&self.chain,
+				)
+				.is_none()
+			})
+			.collect();
+
+		assert_eq!(valid_voting_round.len(), 1);
+		valid_voting_round.into_iter().next().unwrap().clone()
 	}
 
 	pub fn handle_response(&mut self, response: (VoterId, Response), current_tick: usize) {

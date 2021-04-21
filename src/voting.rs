@@ -204,7 +204,7 @@ impl Display for Commit {
 // The purpose of the response is to return a set of votes showing it is impossible to have a
 // supermajority for the given block.
 pub fn check_query_reply_is_valid(
-	response: QueryResponse,
+	response: &QueryResponse,
 	block: BlockNumber,
 	voters: &[VoterId],
 	chain: &Chain,
