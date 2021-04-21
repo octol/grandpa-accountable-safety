@@ -126,13 +126,13 @@ use crate::{
 	action::Action,
 	chain::Chain,
 	protocol::{Equivocation, EquivocationDetected},
-	voter::{Voter, VoterId},
+	voter::{Behaviour, Voter, VoterId},
 	voting::{Commit, VoterSet, VotingRound, VotingRounds},
 	world::World,
 };
 use std::collections::BTreeMap;
 
-fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
+fn setup_voters_with_two_finalized_forks(behaviour: Behaviour) -> BTreeMap<VoterId, Voter> {
 	let names = &["Alice", "Bob", "Carol", "Dave"];
 	let voter_set = VoterSet::new(names);
 
@@ -167,7 +167,13 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[0].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id, chain.clone(), voter_set.clone(), voting_rounds, None),
+			Voter::new(
+				id,
+				chain.clone(),
+				voter_set.clone(),
+				voting_rounds,
+				Some(behaviour),
+			),
 		);
 	}
 	{
@@ -178,7 +184,7 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[1].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id, chain, voter_set.clone(), voting_rounds, None),
+			Voter::new(id, chain, voter_set.clone(), voting_rounds, Some(behaviour)),
 		);
 	}
 	{
@@ -188,7 +194,13 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[2].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id.clone(), chain, voter_set.clone(), voting_rounds, None),
+			Voter::new(
+				id.clone(),
+				chain,
+				voter_set.clone(),
+				voting_rounds,
+				Some(behaviour),
+			),
 		);
 	}
 	{
@@ -198,7 +210,7 @@ fn setup_voters_with_two_finalized_forks() -> BTreeMap<VoterId, Voter> {
 		let id = names[3].to_string();
 		voters.insert(
 			id.clone(),
-			Voter::new(id, chain, voter_set, voting_rounds, None),
+			Voter::new(id, chain, voter_set, voting_rounds, Some(behaviour)),
 		);
 	}
 
@@ -286,8 +298,65 @@ fn append_voting_rounds_b(
 }
 
 #[test]
-fn basic_example() {
-	let mut world = World::new(setup_voters_with_two_finalized_forks());
+fn basic_example_with_precommits() {
+	let mut world = World::new(setup_voters_with_two_finalized_forks(
+		Behaviour::ReturnPrecommits,
+	));
+
+	world.list_commits();
+
+	println!("\n*** Starting loop ***\n");
+
+	while !world.completed() {
+		let requests = world.process_actions();
+		let responses = world.handle_requests(requests);
+		world.handle_responses(responses);
+		world.tick();
+	}
+
+	// We get three sets of equivocations, one coming from each voter
+	assert_eq!(
+		world.equivocations_detected(),
+		&[
+			EquivocationDetected::Precommit(vec![
+				Equivocation {
+					voter: "Alice".to_string(),
+					blocks: vec![1, 2],
+				},
+				Equivocation {
+					voter: "Bob".to_string(),
+					blocks: vec![1, 2],
+				}
+			]),
+			EquivocationDetected::Precommit(vec![
+				Equivocation {
+					voter: "Alice".to_string(),
+					blocks: vec![1, 2],
+				},
+				Equivocation {
+					voter: "Bob".to_string(),
+					blocks: vec![1, 2],
+				}
+			]),
+			EquivocationDetected::Precommit(vec![
+				Equivocation {
+					voter: "Alice".to_string(),
+					blocks: vec![1, 2],
+				},
+				Equivocation {
+					voter: "Bob".to_string(),
+					blocks: vec![1, 2],
+				}
+			])
+		],
+	);
+}
+
+#[test]
+fn basic_example_with_prevotes() {
+	let mut world = World::new(setup_voters_with_two_finalized_forks(
+		Behaviour::ReturnPrevotes,
+	));
 
 	world.list_commits();
 

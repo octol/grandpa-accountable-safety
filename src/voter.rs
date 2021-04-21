@@ -40,6 +40,7 @@ pub struct Voter {
 }
 
 /// If present, controls the behavior of primarily misbehaving entities
+#[derive(Copy, Clone)]
 pub enum Behaviour {
 	ReturnPrecommits,
 	ReturnPrevotes,
