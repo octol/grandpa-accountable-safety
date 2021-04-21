@@ -342,12 +342,7 @@ impl Voter {
 					.iter_mut()
 					.next()
 					.unwrap()
-					.add_response(
-						round_number,
-						response.0,
-						query_response,
-						&self.chain,
-					);
+					.add_response(round_number, response.0, query_response, &self.chain);
 
 				if let Some(next_query) = next_query {
 					self.actions.push((

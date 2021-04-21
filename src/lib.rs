@@ -85,8 +85,8 @@
 //! - If precommits: take union with precommits in commit msg for B to find equivocators.
 //! - If prevotes: ask the precommitters for B.
 //!
-//! Step 3. instead ask the precommitters for B
-//! -------------------------------------------
+//! Step 3. instead ask the precommitters for B (only for prevote reply)
+//! --------------------------------------------------------------------
 //!
 //! Q: Ask all precommitters in the in commit msg for B, which prevotes have you seen?
 //! A: A set T of prevotes with a supermajority for B.

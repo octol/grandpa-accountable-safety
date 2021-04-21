@@ -187,6 +187,10 @@ impl Commit {
 			precommits,
 		}
 	}
+
+	pub fn ids(&self) -> impl Iterator<Item = VoterName> + '_ {
+		self.precommits.iter().map(|precommit| precommit.id)
+	}
 }
 
 impl Display for Commit {

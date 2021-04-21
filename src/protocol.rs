@@ -19,8 +19,8 @@ use crate::{
 	chain::Chain,
 	voter::{VoterId, VoterName},
 	voting::{
-		check_query_reply_is_valid, cross_check_precommit_reply_against_commit, Commit,
-		Precommit, Prevote, RoundNumber,
+		check_query_reply_is_valid, cross_check_precommit_reply_against_commit, Commit, Precommit,
+		Prevote, RoundNumber,
 	},
 };
 use itertools::Itertools;
@@ -80,12 +80,14 @@ impl QueryResponse {
 
 	pub fn target_numbers(&self) -> Vec<BlockNumber> {
 		match self {
-			QueryResponse::Prevotes(prevotes) => {
-				prevotes.iter().map(|prevote| prevote.target_number).collect()
-			}
-			QueryResponse::Precommits(precommits) => {
-				precommits.iter().map(|precommit| precommit.target_number).collect()
-			}
+			QueryResponse::Prevotes(prevotes) => prevotes
+				.iter()
+				.map(|prevote| prevote.target_number)
+				.collect(),
+			QueryResponse::Precommits(precommits) => precommits
+				.iter()
+				.map(|precommit| precommit.target_number)
+				.collect(),
 		}
 	}
 }
@@ -164,17 +166,30 @@ impl AccountableSafety {
 		// Was this for the round directly after the round where the block that should have been
 		// included, but wasn't, was finalized?
 		if round == self.round_for_block_not_included + 1 {
-			let precommits = match query_response {
-				QueryResponse::Precommits(precommits) => precommits.clone(),
-				QueryResponse::Prevotes(_) => todo!(),
-			};
-			if let Some(equivocations) = cross_check_precommit_reply_against_commit(
-				&precommits,
-				self.commit_for_block_not_included.clone(),
-			) {
-				let querying_state = self.querying_rounds.get_mut(&round).unwrap();
-				querying_state.equivocations.push(equivocations);
-			};
+			match query_response {
+				QueryResponse::Precommits(precommits) => {
+					if let Some(equivocations) = cross_check_precommit_reply_against_commit(
+						&precommits,
+						self.commit_for_block_not_included.clone(),
+					) {
+						self.querying_rounds
+							.get_mut(&round)
+							.unwrap()
+							.equivocations
+							.push(equivocations);
+					} else {
+						panic!(
+							"Reaching the end of the accountable safety protocol without \
+							finding any equivocators!"
+						);
+					}
+				}
+				QueryResponse::Prevotes(prevotes) => {
+					// Ask all precommits in commit what prevotes they've seen
+					let a = self.commit_for_block_not_included.ids();
+					todo!();
+				}
+			}
 		} else {
 			// Start the next round if not already done
 			let next_round_to_investigate = round - 1;
