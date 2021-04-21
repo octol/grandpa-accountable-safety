@@ -33,6 +33,7 @@ pub struct AccountableSafety {
 	round_for_block_not_included: RoundNumber,
 	commit_for_block_not_included: Commit,
 	querying_rounds: BTreeMap<RoundNumber, QueryState>,
+	prevote_queries: BTreeMap<RoundNumber, QueryState>,
 }
 
 // The state of the querying about a specific round.
@@ -54,7 +55,7 @@ impl QueryState {
 
 pub enum NextQuery {
 	AskAboutRound(Query),
-	PrevotesForRound(Query),
+	PrevotesForRound(PrevoteQuery),
 }
 
 // Query sent to the voters for a specific round
@@ -66,13 +67,19 @@ pub struct Query {
 }
 
 #[derive(Debug, Clone)]
+pub struct PrevoteQuery {
+	pub round: RoundNumber,
+	pub receivers: Vec<VoterId>,
+}
+
+#[derive(Debug, Clone)]
 pub enum QueryResponse {
 	Prevotes(Vec<Prevote>),
 	Precommits(Vec<Precommit>),
 }
 
 impl QueryResponse {
-	pub fn ids(&self) -> Vec<VoterName> {
+	pub fn names(&self) -> Vec<VoterName> {
 		match self {
 			QueryResponse::Prevotes(prevotes) => {
 				prevotes.iter().map(|prevote| prevote.id).collect()
@@ -80,6 +87,19 @@ impl QueryResponse {
 			QueryResponse::Precommits(precommits) => {
 				precommits.iter().map(|precommit| precommit.id).collect()
 			}
+		}
+	}
+
+	pub fn ids(&self) -> Vec<VoterId> {
+		match self {
+			QueryResponse::Prevotes(prevotes) => prevotes
+				.iter()
+				.map(|prevote| prevote.id.to_string())
+				.collect(),
+			QueryResponse::Precommits(precommits) => precommits
+				.iter()
+				.map(|precommit| precommit.id.to_string())
+				.collect(),
 		}
 	}
 
@@ -121,6 +141,7 @@ impl AccountableSafety {
 			round_for_block_not_included,
 			commit_for_block_not_included,
 			querying_rounds: Default::default(),
+			prevote_queries: Default::default(),
 		}
 	}
 
@@ -141,6 +162,28 @@ impl AccountableSafety {
 			round,
 			receivers: voters,
 			block_not_included: self.block_not_included,
+		}
+	}
+
+	// Ask what prevotes the voters know about.
+	pub fn start_prevote_query(
+		&mut self,
+		round: RoundNumber,
+		voters: Vec<VoterId>,
+	) -> PrevoteQuery {
+		self.prevote_queries.insert(
+			round,
+			QueryState {
+				round,
+				voters: voters.clone(),
+				responses: Default::default(),
+				equivocations: Default::default(),
+			},
+		);
+
+		PrevoteQuery {
+			round,
+			receivers: voters,
 		}
 	}
 
@@ -189,10 +232,22 @@ impl AccountableSafety {
 						);
 					}
 				}
-				QueryResponse::Prevotes(prevotes) => {
-					// Ask all precommits in commit what prevotes they've seen
-					let a = self.commit_for_block_not_included.ids();
-					todo!();
+				QueryResponse::Prevotes(_) => {
+					// Ask all precommit voters in commit what prevotes they've seen
+					let next_round_to_investigate = round - 1;
+
+					// WIP: more receivers might show up in later responses.
+					if !self
+						.prevote_queries
+						.contains_key(&next_round_to_investigate)
+					{
+						let voters_in_commit: Vec<VoterId> =
+							self.commit_for_block_not_included.ids().collect();
+
+						return Some(NextQuery::PrevotesForRound(
+							self.start_prevote_query(next_round_to_investigate, voters_in_commit),
+						));
+					}
 				}
 			}
 		} else {

@@ -188,8 +188,14 @@ impl Commit {
 		}
 	}
 
-	pub fn ids(&self) -> impl Iterator<Item = VoterName> + '_ {
+	pub fn names(&self) -> impl Iterator<Item = VoterName> + '_ {
 		self.precommits.iter().map(|precommit| precommit.id)
+	}
+
+	pub fn ids(&self) -> impl Iterator<Item = VoterId> + '_ {
+		self.precommits
+			.iter()
+			.map(|precommit| precommit.id.to_string())
 	}
 }
 

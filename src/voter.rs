@@ -19,7 +19,9 @@ use crate::{
 	block::BlockNumber,
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
-	protocol::{AccountableSafety, EquivocationDetected, NextQuery, Query, QueryResponse},
+	protocol::{
+		AccountableSafety, EquivocationDetected, NextQuery, PrevoteQuery, Query, QueryResponse,
+	},
 	voting::{check_query_reply_is_valid, Commit, VoterSet, VotingRounds},
 };
 use itertools::Itertools;
@@ -155,11 +157,7 @@ impl Voter {
 					}
 				}
 				Action::AskVotersWhichPrevotesSeen(query) => {
-					let Query {
-						round,
-						receivers,
-						block_not_included,
-					} = query;
+					let PrevoteQuery { round, receivers } = query;
 					for receiver in receivers {
 						println!(
 							"{}: asking {} about prevotes seen in round {}",
@@ -168,11 +166,7 @@ impl Voter {
 						messages.push(Message {
 							sender: self.id.clone(),
 							receiver: receiver.clone(),
-							content: Payload::Request(
-								Request::WhichPrevotesSeenInRound(
-									*round,
-								),
-							),
+							content: Payload::Request(Request::WhichPrevotesSeenInRound(*round)),
 						});
 					}
 				}
@@ -369,21 +363,16 @@ impl Voter {
 					.unwrap()
 					.add_response(round_number, response.0, query_response, &self.chain);
 
-				match next_query {
-					Some(NextQuery::AskAboutRound(next_query)) => {
-						self.actions.push((
-							current_tick + 10,
-							Action::AskVotersAboutEstimate(next_query),
-						));
+				let next_action = next_query.map(|next_query| match next_query {
+					NextQuery::AskAboutRound(next_query) => {
+						Action::AskVotersAboutEstimate(next_query)
 					}
-					Some(NextQuery::PrevotesForRound(next_query)) => {
-						todo!();
-						self.actions.push((
-							current_tick + 10,
-							Action::AskVotersWhichPrevotesSeen(next_query)
-						));
+					NextQuery::PrevotesForRound(next_query) => {
+						Action::AskVotersWhichPrevotesSeen(next_query)
 					}
-					_ => (),
+				});
+				if let Some(next_action) = next_action {
+					self.actions.push((current_tick + 10, next_action));
 				}
 			}
 		}

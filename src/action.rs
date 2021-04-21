@@ -14,7 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{block::BlockNumber, message::Request, protocol::Query, voter::VoterId};
+use crate::{
+	block::BlockNumber,
+	message::Request,
+	protocol::{PrevoteQuery, Query},
+	voter::VoterId,
+};
 
 pub type TriggerAtTick = usize;
 
@@ -24,5 +29,5 @@ pub enum Action {
 	SendBlock(VoterId, BlockNumber),
 	RequeueRequest((VoterId, Request)),
 	AskVotersAboutEstimate(Query),
-	AskVotersWhichPrevotesSeen(Query),
+	AskVotersWhichPrevotesSeen(PrevoteQuery),
 }
