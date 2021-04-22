@@ -19,9 +19,7 @@ use crate::{
 	block::BlockNumber,
 	chain::Chain,
 	message::{Message, Payload, Request, Response},
-	protocol::{
-		AccountableSafety, EquivocationDetected, NextQuery, PrevoteQuery, Query, QueryResponse,
-	},
+	protocol::{AccountableSafety, EquivocationDetected, NextQuery, Query, QueryResponse},
 	voting::{check_query_reply_is_valid, Commit, VoterSet, VotingRounds},
 };
 use itertools::Itertools;
