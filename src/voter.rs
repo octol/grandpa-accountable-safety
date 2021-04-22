@@ -94,13 +94,12 @@ impl Voter {
 
 		let mut messages = Vec::new();
 		for (trigger_time, ref action) in actions {
+			println!("{}: acting on {:?}", self.id, action);
 			match action {
 				Action::BroadcastCommits => {
-					println!("{}: broadcasting all our commits to all voters", self.id);
 					messages.append(&mut self.create_broadcast_commit_messages());
 				}
 				Action::SendBlock(id, block_number) => {
-					println!("{}: send block {} to {}", self.id, block_number, id);
 					let blocks = self.chain.get_chain_of_blocks(*block_number);
 					if !blocks.is_empty() {
 						messages.push(Message {
@@ -140,10 +139,6 @@ impl Voter {
 						block_not_included,
 					} = query;
 					for receiver in receivers {
-						println!(
-							"{}: asking {} about block {} and round {}",
-							self.id, receiver, block_not_included, round,
-						);
 						messages.push(Message {
 							sender: self.id.clone(),
 							receiver: receiver.clone(),
@@ -157,16 +152,17 @@ impl Voter {
 					}
 				}
 				Action::AskVotersWhichPrevotesSeen(query) => {
-					let PrevoteQuery { round, receivers } = query;
-					for receiver in receivers {
+					for receiver in &query.receivers {
 						println!(
 							"{}: asking {} about prevotes seen in round {}",
-							self.id, receiver, round,
+							self.id, receiver, query.round,
 						);
 						messages.push(Message {
 							sender: self.id.clone(),
 							receiver: receiver.clone(),
-							content: Payload::Request(Request::WhichPrevotesSeenInRound(*round)),
+							content: Payload::Request(Request::WhichPrevotesSeenInRound(
+								query.round,
+							)),
 						});
 					}
 				}
@@ -200,6 +196,7 @@ impl Voter {
 		request: (VoterId, Request),
 		current_tick: usize,
 	) -> Vec<(VoterId, Response)> {
+		println!("{}: received {:?}", self.id, request);
 		match request.1 {
 			Request::HereIsCommit(round_number, ref commit) => {
 				// Ignore commits we already know about
@@ -207,7 +204,6 @@ impl Voter {
 					assert_eq!(commit, chain_commit);
 					return Default::default();
 				}
-				println!("{}: received {}", self.id, commit);
 
 				// Requeue request for later if we don't yet know about the block, which we send out
 				// a request for.
@@ -266,7 +262,6 @@ impl Voter {
 				}
 			}
 			Request::HereAreBlocks(blocks) => {
-				println!("{}: received blocks", self.id);
 				for block in blocks {
 					if let Some(chain_block) = self.chain.get_block(block.number) {
 						assert_eq!(&block, chain_block);
@@ -353,6 +348,7 @@ impl Voter {
 	}
 
 	pub fn handle_response(&mut self, response: (VoterId, Response), current_tick: usize) {
+		println!("{}: received {:?}", self.id, response);
 		match response.1 {
 			Response::RequestBlock(block_number) => {
 				self.actions.push((
@@ -361,11 +357,6 @@ impl Voter {
 				));
 			}
 			Response::ExplainEstimate(round_number, query_response) => {
-				println!(
-					"{}: handle ExplainEstimate from {}: {}, {:?}",
-					self.id, response.0, round_number, query_response
-				);
-
 				// WIP: assume a single instance
 				let next_query = self
 					.accountable_safety
@@ -387,11 +378,6 @@ impl Voter {
 				}
 			}
 			Response::PrevotesSeen(round_number, query_response) => {
-				println!(
-					"{}: handle PrevotesSeen from {}: {}, {:?}",
-					self.id, response.0, round_number, query_response,
-				);
-
 				// WIP: assume a single instance
 				self.accountable_safety
 					.iter_mut()

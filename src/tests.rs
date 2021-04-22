@@ -369,7 +369,6 @@ fn basic_example_with_prevotes() {
 		world.tick();
 	}
 
-	// We get three sets of equivocations, one coming from each voter
 	assert_eq!(
 		world.equivocations_detected(),
 		&[EquivocationDetected::Prevote(vec![

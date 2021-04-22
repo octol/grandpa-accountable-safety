@@ -232,7 +232,6 @@ impl AccountableSafety {
 					}
 				}
 				QueryResponse::Prevotes(_) => {
-					println!("ask all precommit voter in commit what prevotes they've seen");
 					// Ask all precommit voters in commit what prevotes they've seen
 					let next_round_to_investigate = round - 1;
 
@@ -275,7 +274,6 @@ impl AccountableSafety {
 		voter: VoterId,
 		query_response: QueryResponse,
 	) -> Option<NextQuery> {
-		println!("add_prevote_response");
 		// Add the response first
 		{
 			let querying_state = self.prevote_queries.get_mut(&round).unwrap();

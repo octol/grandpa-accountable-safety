@@ -297,7 +297,7 @@ pub fn cross_check_votes<V: Vote>(votes0: Vec<V>, votes1: Vec<V>) -> Option<Vec<
 				duplicates.iter().map(|vote| vote.target()).collect();
 			duplicate_blocks.sort_unstable();
 			println!(
-				"Equivocation detected: voter {} for blocks {:?}",
+				"Equivocation detected: {} voted for blocks {:?}",
 				id, duplicate_blocks,
 			);
 
