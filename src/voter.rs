@@ -190,7 +190,7 @@ impl Voter {
 			.map(|(receiver, payload)| Message {
 				sender: self.id.clone(),
 				receiver: receiver.to_string(),
-				content: payload.clone(),
+				content: payload,
 			})
 			.collect()
 	}
@@ -320,7 +320,7 @@ impl Voter {
 					// WIP: consider alternative ways to answer
 					return Vec::new();
 				} else {
-					let prevotes = voting_rounds.into_iter().next().unwrap().prevotes.clone();
+					let prevotes = voting_rounds.iter().next().unwrap().prevotes.clone();
 					return vec![(
 						request.0,
 						Response::PrevotesSeen(round, QueryResponse::Prevotes(prevotes)),
@@ -349,7 +349,7 @@ impl Voter {
 			.collect();
 
 		assert_eq!(valid_voting_round.len(), 1);
-		valid_voting_round.into_iter().next().unwrap().clone()
+		valid_voting_round.into_iter().next().unwrap()
 	}
 
 	pub fn handle_response(&mut self, response: (VoterId, Response), current_tick: usize) {

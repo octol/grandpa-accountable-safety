@@ -245,12 +245,7 @@ pub fn check_query_reply_is_valid(
 	voters: &[VoterId],
 	chain: &Chain,
 ) -> Option<EquivocationDetected> {
-	let unique_voters: HashSet<VoterId> = response
-		.ids()
-		.into_iter()
-		.map(|id| id.to_string())
-		.unique()
-		.collect();
+	let unique_voters: HashSet<VoterId> = response.ids().into_iter().unique().collect();
 
 	let num_equivocations_in_response =
 		response.ids().iter().count() - unique_voters.iter().count();
@@ -291,7 +286,7 @@ pub fn cross_check_votes<V: Vote>(votes0: Vec<V>, votes1: Vec<V>) -> Option<Vec<
 	let union: HashSet<_> = votes0.union(&votes1).collect();
 
 	let mut unique_ids: Vec<_> = union.iter().map(|vote| vote.id()).unique().collect();
-	unique_ids.sort();
+	unique_ids.sort_unstable();
 
 	// Find any duplicate id in the union
 	let mut equivocations = Vec::new();
@@ -300,7 +295,7 @@ pub fn cross_check_votes<V: Vote>(votes0: Vec<V>, votes1: Vec<V>) -> Option<Vec<
 		if duplicates.len() > 1 {
 			let mut duplicate_blocks: Vec<_> =
 				duplicates.iter().map(|vote| vote.target()).collect();
-			duplicate_blocks.sort();
+			duplicate_blocks.sort_unstable();
 			println!(
 				"Equivocation detected: voter {} for blocks {:?}",
 				id, duplicate_blocks,

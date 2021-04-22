@@ -259,12 +259,7 @@ impl AccountableSafety {
 				.querying_rounds
 				.contains_key(&next_round_to_investigate)
 			{
-				let voters_in_precommits = query_response
-					.ids()
-					.into_iter()
-					.map(|id| id.to_string())
-					.unique()
-					.collect();
+				let voters_in_precommits = query_response.ids().into_iter().unique().collect();
 				return Some(NextQuery::AskAboutRound(
 					self.start_query_round(next_round_to_investigate, voters_in_precommits),
 				));
