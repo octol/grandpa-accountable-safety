@@ -19,8 +19,7 @@ use crate::{
 	chain::Chain,
 	voter::{VoterId, VoterName},
 	voting::{
-		check_query_reply_is_valid, cross_check_precommit_reply_against_commit,
-		cross_check_prevote_reply_against_prevotes_seen, Commit, Precommit, Prevote, RoundNumber,
+		check_query_reply_is_valid, cross_check_votes, Commit, Precommit, Prevote, RoundNumber,
 	},
 };
 use itertools::Itertools;
@@ -216,15 +215,15 @@ impl AccountableSafety {
 		if round == self.round_for_block_not_included + 1 {
 			match query_response {
 				QueryResponse::Precommits(precommits) => {
-					if let Some(equivocations) = cross_check_precommit_reply_against_commit(
-						&precommits,
-						self.commit_for_block_not_included.clone(),
+					if let Some(equivocations) = cross_check_votes(
+						precommits,
+						self.commit_for_block_not_included.precommits.clone(),
 					) {
 						self.querying_rounds
 							.get_mut(&round)
 							.unwrap()
 							.equivocations
-							.push(equivocations);
+							.push(EquivocationDetected::Precommit(equivocations));
 					} else {
 						panic!(
 							"Reaching the end of the accountable safety protocol without \
@@ -244,7 +243,6 @@ impl AccountableSafety {
 					{
 						let voters_in_commit: Vec<VoterId> =
 							self.commit_for_block_not_included.ids().collect();
-						dbg!(&voters_in_commit);
 
 						return Some(NextQuery::PrevotesForRound(
 							self.start_prevote_query(next_round_to_investigate, voters_in_commit),
@@ -293,28 +291,24 @@ impl AccountableSafety {
 
 		match query_response {
 			QueryResponse::Prevotes(prevotes) => {
-				dbg!(&prevotes);
-				dbg!(&round);
 				let previous_round = round + 1;
 				let previous_responses = self.querying_rounds.get(&previous_round).unwrap();
-				let previous_prevote_replies = previous_responses.responses.iter().flat_map(|response| {
-					match response.1 {
+				let previous_prevote_replies = previous_responses
+					.responses
+					.iter()
+					.flat_map(|response| match response.1 {
 						QueryResponse::Precommits(_) => panic!(),
 						QueryResponse::Prevotes(prevotes) => prevotes,
-					}
-				})
-				.cloned()
-				.collect();
+					})
+					.cloned()
+					.collect();
 
-				if let Some(equivocations) = cross_check_prevote_reply_against_prevotes_seen(
-					prevotes,
-					previous_prevote_replies,
-				) {
+				if let Some(equivocations) = cross_check_votes(prevotes, previous_prevote_replies) {
 					self.prevote_queries
 						.get_mut(&round)
 						.unwrap()
 						.equivocations
-						.push(equivocations);
+						.push(EquivocationDetected::Prevote(equivocations));
 				} else {
 					panic!(
 						"Reaching the end of the accountable safety protocol without \
@@ -330,16 +324,17 @@ impl AccountableSafety {
 	}
 
 	pub fn equivocations_detected(&self) -> Vec<EquivocationDetected> {
-		let mut equivocations: Vec<_> = self.querying_rounds
+		let mut equivocations: Vec<_> = self
+			.querying_rounds
 			.values()
 			.flat_map(|query_state| query_state.equivocations.clone())
 			.collect();
 
-		let mut prevote_equivocations = self.prevote_queries
+		let mut prevote_equivocations = self
+			.prevote_queries
 			.values()
 			.flat_map(|query_state| query_state.equivocations.clone())
 			.collect();
-		dbg!(&self.prevote_queries);
 
 		equivocations.append(&mut prevote_equivocations);
 		equivocations

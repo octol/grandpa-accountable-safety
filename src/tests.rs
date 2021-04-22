@@ -347,7 +347,7 @@ fn basic_example_with_precommits() {
 					voter: "Bob".to_string(),
 					blocks: vec![1, 2],
 				}
-			])
+			]),
 		],
 	);
 }
@@ -372,37 +372,15 @@ fn basic_example_with_prevotes() {
 	// We get three sets of equivocations, one coming from each voter
 	assert_eq!(
 		world.equivocations_detected(),
-		&[
-			EquivocationDetected::Prevote(vec![
-				Equivocation {
-					voter: "Alice".to_string(),
-					blocks: vec![4],
-				},
-				Equivocation {
-					voter: "Bob".to_string(),
-					blocks: vec![4],
-				}
-			]),
-			EquivocationDetected::Prevote(vec![
-				Equivocation {
-					voter: "Alice".to_string(),
-					blocks: vec![4],
-				},
-				Equivocation {
-					voter: "Bob".to_string(),
-					blocks: vec![4],
-				}
-			]),
-			EquivocationDetected::Prevote(vec![
-				Equivocation {
-					voter: "Alice".to_string(),
-					blocks: vec![4],
-				},
-				Equivocation {
-					voter: "Bob".to_string(),
-					blocks: vec![4],
-				}
-			])
-		],
+		&[EquivocationDetected::Prevote(vec![
+			Equivocation {
+				voter: "Alice".to_string(),
+				blocks: vec![1, 4],
+			},
+			Equivocation {
+				voter: "Bob".to_string(),
+				blocks: vec![1, 4],
+			}
+		]),],
 	);
 }

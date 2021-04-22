@@ -140,7 +140,7 @@ impl VotingRound {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Prevote {
 	pub target_number: BlockNumber,
 	pub id: VoterName,
@@ -171,6 +171,32 @@ impl Display for Precommit {
 			"Precommit {{ target_number: {}, id: {} }}",
 			self.target_number, self.id
 		)
+	}
+}
+
+pub trait Vote: std::hash::Hash + Eq {
+	fn id(&self) -> VoterName;
+
+	fn target(&self) -> BlockNumber;
+}
+
+impl Vote for Prevote {
+	fn id(&self) -> VoterName {
+		self.id
+	}
+
+	fn target(&self) -> BlockNumber {
+		self.target_number
+	}
+}
+
+impl Vote for Precommit {
+	fn id(&self) -> VoterName {
+		self.id
+	}
+
+	fn target(&self) -> BlockNumber {
+		self.target_number
 	}
 }
 
@@ -258,91 +284,42 @@ pub fn check_query_reply_is_valid(
 	}
 }
 
-// Cross check against precommitters in commit message
-pub fn cross_check_precommit_reply_against_commit(
-	precommits: &Vec<Precommit>,
-	commit: Commit,
-) -> Option<EquivocationDetected> {
+pub fn cross_check_votes<V: Vote>(votes0: Vec<V>, votes1: Vec<V>) -> Option<Vec<Equivocation>> {
+	// Take the union
+	let votes0: HashSet<_> = votes0.iter().collect();
+	let votes1: HashSet<_> = votes1.iter().collect();
+	let union: HashSet<_> = votes0.union(&votes1).collect();
+
+	let mut unique_ids: Vec<_> = union.iter().map(|vote| vote.id()).unique().collect();
+	unique_ids.sort();
+
+	// Find any duplicate id in the union
 	let mut equivocations = Vec::new();
-
-	dbg!(&precommits);
-	dbg!(&commit);
-
-	for commit_precommit in &commit.precommits {
-		let equivocated_votes: Vec<_> = precommits
-			.iter()
-			.filter(|precommit| {
-				precommit.id == commit_precommit.id
-					&& precommit.target_number != commit_precommit.target_number
-			})
-			.collect();
-
-		dbg!(&equivocated_votes);
-
-		if !equivocated_votes.is_empty() {
-			print!(
-				"Precommit equivocation detected: voter {} for blocks {}",
-				commit_precommit.id, commit_precommit.target_number
+	for id in unique_ids {
+		let duplicates: Vec<_> = union.iter().filter(|vote| vote.id() == id).collect();
+		if duplicates.len() > 1 {
+			let mut duplicate_blocks: Vec<_> =
+				duplicates.iter().map(|vote| vote.target()).collect();
+			duplicate_blocks.sort();
+			println!(
+				"Equivocation detected: voter {} for blocks {:?}",
+				id, duplicate_blocks,
 			);
-			equivocated_votes.iter().for_each(|e| {
-				print!(", {}", e.target_number);
-			});
-			println!();
 
-			let mut new_equivocations = equivocated_votes
-				.iter()
-				.map(|precommit| Equivocation {
-					voter: precommit.id.to_string(),
-					blocks: vec![precommit.target_number, commit_precommit.target_number],
-				})
-				.collect();
+			let new_equivocation = Equivocation {
+				voter: id.to_string(),
+				blocks: duplicate_blocks,
+			};
 
-			equivocations.append(&mut new_equivocations);
+			equivocations.push(new_equivocation);
 		}
 	}
+
 	if equivocations.is_empty() {
 		None
 	} else {
-		Some(EquivocationDetected::Precommit(equivocations))
-	}
-}
-
-pub fn cross_check_prevote_reply_against_prevotes_seen(
-	prevote_reply: Vec<Prevote>,
-	prevotes_seen: Vec<Prevote>,
-) -> Option<EquivocationDetected> {
-	let mut equivocations = Vec::new();
-	for prevote in &prevotes_seen {
-		let equivocated_votes: Vec<_> = prevote_reply
-			.iter()
-			.filter(|pre| pre.id == prevote.id)
-			.collect();
-
-		if !equivocated_votes.is_empty() {
-			print!(
-				"Prevote equivocation detected: voter {} for blocks {}",
-				prevote.id, prevote.target_number
-			);
-			equivocated_votes.iter().for_each(|e| {
-				print!(", {}", e.target_number);
-			});
-			println!();
-
-			let mut new_equivocations = equivocated_votes
-				.iter()
-				.map(|prevote| Equivocation {
-					voter: prevote.id.to_string(),
-					blocks: vec![prevote.target_number],
-				})
-				.collect();
-
-			equivocations.append(&mut new_equivocations);
-		}
-	}
-	if equivocations.is_empty() {
-		None
-	} else {
-		Some(EquivocationDetected::Prevote(equivocations))
+		// Some(EquivocationDetected::Prevote(equivocations))
+		Some(equivocations)
 	}
 }
 
@@ -351,7 +328,7 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn cross_check_precommits1() {
+	fn cross_check_votes_without_equivocations() {
 		let precommits = vec![
 			Precommit {
 				target_number: 1,
@@ -375,14 +352,11 @@ mod tests {
 				},
 			],
 		};
-		assert_eq!(
-			cross_check_precommit_reply_against_commit(&precommits, commit),
-			None
-		);
+		assert_eq!(cross_check_votes(precommits, commit.precommits), None);
 	}
 
 	#[test]
-	fn cross_check_precommits2() {
+	fn cross_check_votes_with_equivocations() {
 		let precommits = vec![
 			Precommit {
 				target_number: 1,
@@ -407,14 +381,11 @@ mod tests {
 			],
 		};
 		assert_eq!(
-			cross_check_precommit_reply_against_commit(&precommits, commit),
-			Some(EquivocationDetected::Precommit(vec![Equivocation {
+			cross_check_votes(precommits, commit.precommits),
+			Some(vec![Equivocation {
 				voter: "Alice".to_string(),
 				blocks: vec![1, 2],
-			}])),
+			}]),
 		)
 	}
-
-	#[test]
-	fn cross_check_prevotes() {}
 }
