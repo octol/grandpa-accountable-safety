@@ -68,7 +68,7 @@ impl World {
 			content,
 		} in requests
 		{
-			let request = content.request();
+			let request = content.request().unwrap();
 			let receiving_voter = self
 				.voters
 				.get_mut(&receiver)
@@ -93,7 +93,7 @@ impl World {
 			content,
 		} in responses
 		{
-			let response = content.response();
+			let response = content.response().unwrap();
 			let receiving_voter = self
 				.voters
 				.get_mut(&receiver)

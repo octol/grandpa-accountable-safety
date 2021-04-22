@@ -43,17 +43,17 @@ pub enum Payload {
 }
 
 impl Payload {
-	pub fn request(&self) -> &Request {
+	pub fn request(&self) -> Option<&Request> {
 		match self {
-			Payload::Request(request) => request,
-			Payload::Response(..) => panic!("logic error"),
+			Payload::Request(request) => Some(request),
+			Payload::Response(..) => None,
 		}
 	}
 
-	pub fn response(&self) -> &Response {
+	pub fn response(&self) -> Option<&Response> {
 		match self {
-			Payload::Request(..) => panic!("logic error"),
-			Payload::Response(response) => response,
+			Payload::Request(..) => None,
+			Payload::Response(response) => Some(response),
 		}
 	}
 }
