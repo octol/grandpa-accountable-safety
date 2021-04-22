@@ -279,13 +279,11 @@ impl AccountableSafety {
 		round: RoundNumber,
 		voter: VoterId,
 		query_response: QueryResponse,
-		chain: &Chain,
 	) -> Option<NextQuery> {
 		println!("add_prevote_response");
 		// Add the response first
 		{
 			let querying_state = self.prevote_queries.get_mut(&round).unwrap();
-			let voters = querying_state.voters.clone();
 			querying_state.add_response(voter, query_response.clone());
 		}
 

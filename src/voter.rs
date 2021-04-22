@@ -397,7 +397,7 @@ impl Voter {
 					.iter_mut()
 					.next()
 					.unwrap()
-					.add_prevote_response(round_number, response.0, query_response, &self.chain);
+					.add_prevote_response(round_number, response.0, query_response);
 			}
 		}
 	}
