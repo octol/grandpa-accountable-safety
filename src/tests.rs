@@ -98,7 +98,7 @@
 // not have been a valid reply.)
 //
 // Take union with precommits in commit message for block 2 to find equivocators.
-// 	{4, 4, 4, _} U {1, 1, _, 1} => a and b appears twice, they *equivocated*!
+// 	{2, 2, 2, _} U {1, 1, _, 1} => a and b appears twice, they *equivocated*!
 //
 // Alternative 2:
 // (QUESTION: what is the point of even accepting prevotes as reply to the query?)
