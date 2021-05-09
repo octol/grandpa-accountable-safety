@@ -100,22 +100,26 @@ Now we have a situation where we sent valid commit messages finalizing blocks on
 
 Step 0: as soon as we detect both commit messages, for block 2 and 8, respectively, we trigger the accountable safety protocol since these are not ancestors of each either, in either direction.
 
-### Step 1
+## Step 1
 
-Q to $V_2$: why did the estimate for round 2 in round 3 not include block 2 when prevoting of precommitting?
+Question to $V_2$:
 
-A: All three voters in $V_2$ respond with
+> Why did the estimate for round 2 in round 3 not include block 2 when prevoting of precommitting?
+
+All three voters in $V_2$ respond with
 
 $$
 \text{Round 2, precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace.
 $$
 This is a valid response since it's impossible to have a supermajority for block 2. For this step it doesn't matter if the reply is the set of prevotes or a set of precommits. Since this response is for the round after the block 2 was finalized in, we move to the next step.
 
-### Step 2
+## Step 2
 
-Q to all the precommit voters in the commit for for block 8, which is $V_2$: why did the estimate for round 1 in round 2 not include block 2 when prevoting of precommitting?
+Question to all the precommit voters in the commit for for block 8, which is $V_2$:
 
-A: All three voters respond with
+> Why did the estimate for round 1 in round 2 not include block 2 when prevoting of precommitting?
+
+All three voters respond with
 
 $$
 \text{Round 1, precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace.
@@ -133,11 +137,13 @@ $$
 \text{Round 1, prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 5 \rbrace.
 $$
 
-### Step 3
+## Step 3
 
-Q to all precommit voters in the commit for block 2: what prevotes have you seen for round 1?
+Question to all precommit voters in the commit for block 2:
 
-A: all three voters respond with
+> What prevotes have you seen for round 1?
+
+All three voters respond with
 
 $$
 \text{Round 1, prevotes} = \lbrace \text{Alice} = 4, \text{Bob} = 4, \text{Carol} = 2 \rbrace.

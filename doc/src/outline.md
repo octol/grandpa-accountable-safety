@@ -3,7 +3,7 @@
 With these definitions we can begin outlining the procedure to track down
 equivocating voters.
 
-### Step 0.
+## Step 0.
 
 The first step is detecting blocks B and B' on two different branches being
 finalized. If these two blocks were finalized in the same round, we can take
@@ -28,7 +28,7 @@ digraph {
 This occurs when a node detects commit messages for mutually conflicting
 blocks. At this point they trigger the accountable safety protocol.
 
-### Step 1. Start asking questions about B'
+## Step 1. Start asking questions about B'
 
 When we have two blocks that are finalized on conflicting branches, we
 naturally ask ourselves, when the latter block was voted for, why wasn't the
@@ -65,7 +65,7 @@ no replies at all do we consider the non-responders as Byzantine.
 We keep sending out requests asking why the estimate in each round didn't
 include B, until we get a reply for the estimate of round r+1.
 
-### Step 2. Reach the round after which B was finalized
+## Step 2. Reach the round after which B was finalized
 
 Once we get a reply containing votes S for the round r+1, we reach a point
 where we can start to get closure.
@@ -84,7 +84,7 @@ Now if for this step, if the reply to the request is instead a set S of
 prevotes, we need to take one additional step before we can home in on the
 equivocators.
 
-### Step 3. Instead ask the precommitters for B
+## Step 3. Instead ask the precommitters for B
 
 To be able to find the equivocators we need something to compare the reply from step 2 against. As such, we send a request to all voters in the commit for block B, asking:
 
