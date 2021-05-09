@@ -229,7 +229,7 @@ fn create_common_voting_rounds(voter_set: &VoterSet, chain: &mut Chain) -> Votin
 
 	{
 		let mut round = VotingRound::new_with_tag(1, voter_set.clone(), voting_round_tag);
-		round.prevote(&[(2, "Alice"), (2, "Bob"), (1, "Carol"), (1, "Dave")]);
+		round.prevote(&[(1, "Alice"), (1, "Bob"), (1, "Carol"), (1, "Dave")]);
 		round.precommit(&[(1, "Alice"), (1, "Bob"), (1, "Carol"), (1, "Dave")]);
 		let commit = Commit::new(1, round.precommits.clone());
 		chain.finalize_block(1, round.round_number, commit);
