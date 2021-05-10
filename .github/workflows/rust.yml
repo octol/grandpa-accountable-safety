@@ -36,6 +36,7 @@ jobs:
         #- run: cargo install mdbook-katex
         #- run: cargo install --git https://github.com/dylanowen/mdbook-graphviz mdbook-graphviz
         - run: cargo install mdbook-graphviz
+          working-directory: ./doc
         - run: mdbook build
           working-directory: ./doc
 
