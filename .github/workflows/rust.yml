@@ -32,6 +32,8 @@ jobs:
             mdbook-version: '0.4.6'
             # mdbook-version: 'latest'
 
+        - run: cargo install mdbook-katex
+        - run: cargo install mdbook-graphviz
         - run: mdbook build
           working-directory: ./doc
 
