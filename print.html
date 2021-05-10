@@ -1,0 +1,465 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Accountable Safety for GRANDPA</title>
+        
+        <meta name="robots" content="noindex" />
+        
+        
+
+
+        <!-- Custom HTML head -->
+        
+
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        
+        <link rel="icon" href="favicon.svg">
+        
+        
+        <link rel="shortcut icon" href="favicon.png">
+        
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        
+        <link rel="stylesheet" href="css/print.css" media="print">
+        
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        
+        <link rel="stylesheet" href="fonts/fonts.css">
+        
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+
+        
+        <!-- MathJax -->
+        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="outline.html"><strong aria-hidden="true">2.</strong> Outline</a></li><li class="chapter-item expanded "><a href="example.html"><strong aria-hidden="true">3.</strong> Example</a></li><li class="chapter-item expanded "><a href="implementation.html"><strong aria-hidden="true">4.</strong> Implementation</a></li><li class="chapter-item expanded "><a href="references.html"><strong aria-hidden="true">5.</strong> References</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                        
+                    </div>
+
+                    <h1 class="menu-title">Accountable Safety for GRANDPA</h1>
+
+                    <div class="right-buttons">
+                        
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        
+                        
+                    </div>
+                </div>
+
+                
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+<p>Accountable Safety for GRANDPA is a synchronous interactive protocol for
+tracking down and proving after the fact when participants misbehave. The idea
+is that even is more than 1/3 of participants misbehave and finalize
+conflicting forks, they will not get away with and will get their stake
+slashed.</p>
+<p>In the <a href="https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf">GRANDPA
+paper</a> there is a
+proof by construction for showing that if two blocks B and B' for which valid
+commit messages were sent, but do not lay on the same chain, then there are at
+least f + 1 Byzantine voters. The proof itself then provides the procedure for
+tracking down this set of misbehaving voters.</p>
+<h2><a class="header" href="#definitions" id="definitions">Definitions</a></h2>
+<p>We refer to the GRANDPA paper for in-depth material, it is still useful to
+restate a some of the more important definitions here.</p>
+<h3><a class="header" href="#ghost-function" id="ghost-function">GHOST Function</a></h3>
+<p>The function $g(S)$ takes the set of votes and returns the block B with the
+highest block number such that S has a supermajority for B.</p>
+<h3><a class="header" href="#estimate" id="estimate">Estimate</a></h3>
+<p>$E_{r,v}$ is voter v's estimate of what might have been finalized in round
+r, given by the last block in the chain with head $g(V_{r,v})$ for which it
+is possible for $C_{r,v}$ to have a supermajority.</p>
+<h3><a class="header" href="#completable" id="completable">Completable</a></h3>
+<p>Denote descendent blocks by $B &lt; B'$, where block B' is a descendent of
+block B. Then if either $E_{r,v} &lt; g(V_{r,v})$ or it is impossible for
+$C_{r,v}$ to have a supermajority for any children of $g(V_{r,v})$,
+then we say that v sees that round r as completable. In other words, when
+$E_{r,v}$ contains everything that could have been finalized in round r.</p>
+<p>$E_{r,v}$ having supermajority means that $E_{r,v} &lt; g(V_{r,v})$.</p>
+<h1><a class="header" href="#outline-of-the-procedure" id="outline-of-the-procedure">Outline of the Procedure</a></h1>
+<p>With these definitions we can begin outlining the procedure to track down
+equivocating voters.</p>
+<h2><a class="header" href="#step-0" id="step-0">Step 0.</a></h2>
+<p>The first step is detecting blocks B and B' on two different branches being
+finalized. If these two blocks were finalized in the same round, we can take
+the union of the set of precommits to quickly find the equivocators. So let's
+assume that B' was finalized in a later round r' than B, which was finalized in
+round r. That is, r'&gt; r.</p>
+<pre><code class="language-dotprocess">digraph {
+    rankdir=LR;
+    node [shape=box]
+    &quot;1&quot; -&gt; &quot;2&quot;
+    &quot;2&quot; -&gt; &quot;3&quot;
+    &quot;3&quot; -&gt; &quot;B = 4&quot;
+
+    &quot;2&quot; -&gt; &quot;5&quot;
+    &quot;5&quot; -&gt; &quot;6&quot;
+    &quot;6&quot; -&gt; &quot;B' = 7&quot;
+}
+</code></pre>
+<p>This occurs when a node detects commit messages for mutually conflicting
+blocks. At this point they trigger the accountable safety protocol.</p>
+<h2><a class="header" href="#step-1-start-asking-questions-about-b" id="step-1-start-asking-questions-about-b">Step 1. Start asking questions about B'</a></h2>
+<p>When we have two blocks that are finalized on conflicting branches, we
+naturally ask ourselves, when the latter block was voted for, why wasn't the
+former into taken into account? More precisely, when finalizing B' in round r',
+why didn't the estimate for the preceeding round include B. Recall that the
+estimate for the previous round includes all blocks that could possible be
+finalized in that round.</p>
+<p>For this step we assume that r' &gt; r + 1, that is, there are at least a two
+rounds separation between finalizing B and B'. Should r' = r + 1, we can skip
+to step 2 below.</p>
+<p>We send out requests to all voters in the commit for B', asking:</p>
+<blockquote>
+<p><em>Why did the estimate for the preceeding round not include B when prevoting
+or precommitting for B'?</em></p>
+</blockquote>
+<p>A valid answer is a set S of entirely either of prevotes or precommits for the
+preceeding round r'-1, such that it's impossible for S to have a supermajority
+for B.</p>
+<p>Since the estimate is defined in terms of both prevotes and precommits,
+prevotes indirectly through the GHOST function, and precommits directly, we
+accept answers containing either of these, but not a mix.</p>
+<p>The point of these questions is that we can successively step backwards round
+by round until we reach round r+1, which is the round after the first block B
+was finalized.</p>
+<p>We don't need every voter to reply, as long as we have a single reply
+containing the voter set S we can make progress. Only in the case when we get
+no replies at all do we consider the non-responders as Byzantine.</p>
+<p>We keep sending out requests asking why the estimate in each round didn't
+include B, until we get a reply for the estimate of round r+1.</p>
+<h2><a class="header" href="#step-2-reach-the-round-after-which-b-was-finalized" id="step-2-reach-the-round-after-which-b-was-finalized">Step 2. Reach the round after which B was finalized</a></h2>
+<p>Once we get a reply containing votes S for the round r+1, we reach a point
+where we can start to get closure.</p>
+<p>At this point, when we are in round r+1, our request for estimate of the
+preceding round will now be be answered with a set of votes that are from the
+same round as the first block B was finalized in.</p>
+<p>If the reply is in the form of a set S of precommits, we can take the union
+with the precommits in the commits message for B to find equivocators. With
+this we can terminate the protocol as we've found a set of Byzantine voters.
+Not necessarily all of them, but more than the threshold for when Byzantine
+consensus can be subverted.</p>
+<p>Now if for this step, if the reply to the request is instead a set S of
+prevotes, we need to take one additional step before we can home in on the
+equivocators.</p>
+<h2><a class="header" href="#step-3-instead-ask-the-precommitters-for-b" id="step-3-instead-ask-the-precommitters-for-b">Step 3. Instead ask the precommitters for B</a></h2>
+<p>To be able to find the equivocators we need something to compare the reply from step 2 against. As such, we send a request to all voters in the commit for block B, asking:</p>
+<blockquote>
+<p><em>What prevotes have you seen for round r?</em></p>
+</blockquote>
+<p>A valid reply is a set T of prevotes with a supermajority for B. With this we
+can now take the union between T and S to find the equivocators.</p>
+<h1><a class="header" href="#example" id="example">Example</a></h1>
+<p>Consider the set of voters
+$$V =\lbrace\text{Alice}, \text{Bob}, \text{Carol}, \text{Dave}\rbrace.$$
+Let's assume Alice and Bob are Byzantine voters and manage to partition the
+network, dividing the voter set into two
+$$V_1 =\lbrace\text{Alice}, \text{Bob}, \text{Carol} \rbrace,$$
+$$V_2 =\lbrace\text{Alice}, \text{Bob}, \text{Dave} \rbrace.$$
+Since number number of Byzantine voters is above the threshold for BFT safety,
+a possible scenario is that they can collude to force finalization on two
+different forks,</p>
+<pre><code class="language-dotprocess">digraph {
+    rankdir=LR;
+    node [shape=box]
+    &quot;0&quot; -&gt; &quot;1&quot;
+    &quot;1&quot; -&gt; &quot;2&quot;
+    &quot;2&quot; -&gt; &quot;3&quot;
+    &quot;3&quot; -&gt; &quot;4&quot;
+
+    &quot;1&quot; -&gt; &quot;5&quot;
+    &quot;5&quot; -&gt; &quot;6&quot;
+    &quot;6&quot; -&gt; &quot;7&quot;
+    &quot;7&quot; -&gt; &quot;8&quot;
+}
+</code></pre>
+<p>where $V_1$ finalizes</p>
+<pre><code class="language-dotprocess">digraph {
+    rankdir=LR;
+    node [shape=box]
+    &quot;0, r=0&quot; -&gt; &quot;1, r=1&quot;
+    &quot;1, r=1&quot; -&gt; &quot;2, r=2&quot;
+    &quot;2, r=2&quot; -&gt; &quot;3&quot;
+    &quot;3&quot; -&gt; &quot;4&quot;
+}
+</code></pre>
+<p>and $V_2$ finalizes</p>
+<pre><code class="language-dotprocess">digraph {
+    rankdir=LR;
+    node [shape=box]
+    &quot;0, r=0&quot; -&gt; &quot;1, r=1&quot;
+    &quot;1, r=1&quot; -&gt; &quot;5&quot;
+    &quot;5&quot; -&gt; &quot;6&quot;
+    &quot;6&quot; -&gt; &quot;7&quot;
+    &quot;7&quot; -&gt; &quot;8, r=4&quot;
+}
+</code></pre>
+<p>Note that $V_2$ does not necessarily finalize anything on round 2 and 3.</p>
+<p>Lets exemplify this with votes that could lead to this is. First we have the votes before the partition</p>
+<p>$$
+\text{Round 0}, V:
+\begin{cases}
+\text{Prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Carol} = 1, \text{Dave} = 1 \rbrace,\\
+\text{Precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Carol} = 1, \text{Dave} = 1 \rbrace,
+\end{cases}
+$$</p>
+<p>Then for the first partition, $V_1$,
+$$
+\text{Round 1}, V_1:
+\begin{cases}
+\text{Prevotes} = \lbrace \text{Alice} = 4, \text{Bob} = 4, \text{Carol} = 2 \rbrace, \\
+\text{Precommits} = \lbrace \text{Alice} = 2, \text{Bob} = 2, \text{Carol} = 2 \rbrace,
+\end{cases}
+$$</p>
+<p>and similarly for the second parition $V_2$</p>
+<p>$$
+\text{Round 1}, V_2:
+\begin{cases}
+\text{Prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 5 \rbrace, \\
+\text{Precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace,
+\end{cases}
+$$</p>
+<p>$$
+\text{Round 2}, V_2:
+\begin{cases}
+\text{Prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 5 \rbrace, \\
+\text{Precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace,
+\end{cases}
+$$</p>
+<p>$$
+\text{Round 3}, V_2:
+\begin{cases}
+\text{Prevotes} = \lbrace \text{Alice} = 8, \text{Bob} = 8, \text{Dave} = 8 \rbrace, \\
+\text{Precommits} = \lbrace \text{Alice} = 8, \text{Bob} = 8, \text{Dave} = 8 \rbrace,
+\end{cases}
+$$</p>
+<p>Now we have a situation where we sent valid commit messages finalizing blocks on both forks of the chain. Let's now illustrate the steps needed to uncover the equivocating voters.</p>
+<p>Step 0: as soon as we detect both commit messages, for block 2 and 8, respectively, we trigger the accountable safety protocol since these are not ancestors of each either, in either direction.</p>
+<h2><a class="header" href="#step-1" id="step-1">Step 1</a></h2>
+<p>Question to $V_2$:</p>
+<blockquote>
+<p>Why did the estimate for round 2 in round 3 not include block 2 when prevoting of precommitting?</p>
+</blockquote>
+<p>All three voters in $V_2$ respond with</p>
+<p>$$
+\text{Round 2, precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace.
+$$
+This is a valid response since it's impossible to have a supermajority for block 2. For this step it doesn't matter if the reply is the set of prevotes or a set of precommits. Since this response is for the round after the block 2 was finalized in, we move to the next step.</p>
+<h2><a class="header" href="#step-2" id="step-2">Step 2</a></h2>
+<p>Question to all the precommit voters in the commit for for block 8, which is $V_2$:</p>
+<blockquote>
+<p>Why did the estimate for round 1 in round 2 not include block 2 when prevoting of precommitting?</p>
+</blockquote>
+<p>All three voters respond with</p>
+<p>$$
+\text{Round 1, precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace.
+$$</p>
+<p>At this point we can then take the union between this set of precommits, and the precommits from the commit for block 2, which is
+$$
+\text{Precommits in commit} = \lbrace \text{Alice} = 2, \text{Bob} = 2, \text{Carol} = 2 \rbrace.
+$$
+Then we see that Alice and Bob occur twice, and that they equivocated.</p>
+<p>Had the reply been in terms of prevotes we would have to proceed to step 3 to conclude the protocol. A valid reply with prevotes could look like</p>
+<p>$$
+\text{Round 1, prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 5 \rbrace.
+$$</p>
+<h2><a class="header" href="#step-3" id="step-3">Step 3</a></h2>
+<p>Question to all precommit voters in the commit for block 2:</p>
+<blockquote>
+<p>What prevotes have you seen for round 1?</p>
+</blockquote>
+<p>All three voters respond with</p>
+<p>$$
+\text{Round 1, prevotes} = \lbrace \text{Alice} = 4, \text{Bob} = 4, \text{Carol} = 2 \rbrace.
+$$</p>
+<p>Taking the union with this and the reply to the query in step 2 we see that Alice and Bob equivocated.</p>
+<h1><a class="header" href="#implementation" id="implementation">Implementation</a></h1>
+<h1><a class="header" href="#references" id="references">References</a></h1>
+<ol>
+<li>https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf</li>
+<li>https://arxiv.org/pdf/2007.01560.pdf</li>
+</ol>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        
+
+                        
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                
+
+                
+            </nav>
+
+        </div>
+
+        
+
+        
+
+        
+
+        
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+
+        
+
+        
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+
+        
+        
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            MathJax.Hub.Register.StartupHook('End', function() {
+                window.setTimeout(window.print, 100);
+            });
+        });
+        </script>
+        
+        
+
+    </body>
+</html>
