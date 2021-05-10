@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#example" id="example">Example</a></h1>
+                        <h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Consider the set of voters
 $$V =\lbrace\text{Alice}, \text{Bob}, \text{Carol}, \text{Dave}\rbrace.$$
 Let's assume Alice and Bob are Byzantine voters and manage to partition the
@@ -252,7 +252,7 @@ $$</p>
 $$</p>
 <p>Now we have a situation where we sent valid commit messages finalizing blocks on both forks of the chain. Let's now illustrate the steps needed to uncover the equivocating voters.</p>
 <p>Step 0: as soon as we detect both commit messages, for block 2 and 8, respectively, we trigger the accountable safety protocol since these are not ancestors of each either, in either direction.</p>
-<h2><a class="header" href="#step-1" id="step-1">Step 1</a></h2>
+<h2 id="step-1"><a class="header" href="#step-1">Step 1</a></h2>
 <p>Question to $V_2$:</p>
 <blockquote>
 <p>Why did the estimate for round 2 in round 3 not include block 2 when prevoting of precommitting?</p>
@@ -262,7 +262,7 @@ $$</p>
 \text{Round 2, precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace.
 $$
 This is a valid response since it's impossible to have a supermajority for block 2. For this step it doesn't matter if the reply is the set of prevotes or a set of precommits. Since this response is for the round after the block 2 was finalized in, we move to the next step.</p>
-<h2><a class="header" href="#step-2" id="step-2">Step 2</a></h2>
+<h2 id="step-2"><a class="header" href="#step-2">Step 2</a></h2>
 <p>Question to all the precommit voters in the commit for for block 8, which is $V_2$:</p>
 <blockquote>
 <p>Why did the estimate for round 1 in round 2 not include block 2 when prevoting of precommitting?</p>
@@ -280,7 +280,7 @@ Then we see that Alice and Bob occur twice, and that they equivocated.</p>
 <p>$$
 \text{Round 1, prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 5 \rbrace.
 $$</p>
-<h2><a class="header" href="#step-3" id="step-3">Step 3</a></h2>
+<h2 id="step-3"><a class="header" href="#step-3">Step 3</a></h2>
 <p>Question to all precommit voters in the commit for block 2:</p>
 <blockquote>
 <p>What prevotes have you seen for round 1?</p>

@@ -168,7 +168,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <p>Accountable Safety for GRANDPA is a synchronous interactive protocol for
 tracking down and proving after the fact when participants misbehave. The idea
 is that even is more than 1/3 of participants misbehave and finalize
@@ -180,27 +180,27 @@ proof by construction for showing that if two blocks B and B' for which valid
 commit messages were sent, but do not lay on the same chain, then there are at
 least f + 1 Byzantine voters. The proof itself then provides the procedure for
 tracking down this set of misbehaving voters.</p>
-<h2><a class="header" href="#definitions" id="definitions">Definitions</a></h2>
+<h2 id="definitions"><a class="header" href="#definitions">Definitions</a></h2>
 <p>We refer to the GRANDPA paper for in-depth material, it is still useful to
 restate a some of the more important definitions here.</p>
-<h3><a class="header" href="#ghost-function" id="ghost-function">GHOST Function</a></h3>
+<h3 id="ghost-function"><a class="header" href="#ghost-function">GHOST Function</a></h3>
 <p>The function $g(S)$ takes the set of votes and returns the block B with the
 highest block number such that S has a supermajority for B.</p>
-<h3><a class="header" href="#estimate" id="estimate">Estimate</a></h3>
+<h3 id="estimate"><a class="header" href="#estimate">Estimate</a></h3>
 <p>$E_{r,v}$ is voter v's estimate of what might have been finalized in round
 r, given by the last block in the chain with head $g(V_{r,v})$ for which it
 is possible for $C_{r,v}$ to have a supermajority.</p>
-<h3><a class="header" href="#completable" id="completable">Completable</a></h3>
+<h3 id="completable"><a class="header" href="#completable">Completable</a></h3>
 <p>Denote descendent blocks by $B &lt; B'$, where block B' is a descendent of
 block B. Then if either $E_{r,v} &lt; g(V_{r,v})$ or it is impossible for
 $C_{r,v}$ to have a supermajority for any children of $g(V_{r,v})$,
 then we say that v sees that round r as completable. In other words, when
 $E_{r,v}$ contains everything that could have been finalized in round r.</p>
 <p>$E_{r,v}$ having supermajority means that $E_{r,v} &lt; g(V_{r,v})$.</p>
-<h1><a class="header" href="#outline-of-the-procedure" id="outline-of-the-procedure">Outline of the Procedure</a></h1>
+<h1 id="outline-of-the-procedure"><a class="header" href="#outline-of-the-procedure">Outline of the Procedure</a></h1>
 <p>With these definitions we can begin outlining the procedure to track down
 equivocating voters.</p>
-<h2><a class="header" href="#step-0" id="step-0">Step 0.</a></h2>
+<h2 id="step-0"><a class="header" href="#step-0">Step 0.</a></h2>
 <p>The first step is detecting blocks B and B' on two different branches being
 finalized. If these two blocks were finalized in the same round, we can take
 the union of the set of precommits to quickly find the equivocators. So let's
@@ -220,7 +220,7 @@ round r. That is, r'&gt; r.</p>
 </code></pre>
 <p>This occurs when a node detects commit messages for mutually conflicting
 blocks. At this point they trigger the accountable safety protocol.</p>
-<h2><a class="header" href="#step-1-start-asking-questions-about-b" id="step-1-start-asking-questions-about-b">Step 1. Start asking questions about B'</a></h2>
+<h2 id="step-1-start-asking-questions-about-b"><a class="header" href="#step-1-start-asking-questions-about-b">Step 1. Start asking questions about B'</a></h2>
 <p>When we have two blocks that are finalized on conflicting branches, we
 naturally ask ourselves, when the latter block was voted for, why wasn't the
 former into taken into account? More precisely, when finalizing B' in round r',
@@ -249,7 +249,7 @@ containing the voter set S we can make progress. Only in the case when we get
 no replies at all do we consider the non-responders as Byzantine.</p>
 <p>We keep sending out requests asking why the estimate in each round didn't
 include B, until we get a reply for the estimate of round r+1.</p>
-<h2><a class="header" href="#step-2-reach-the-round-after-which-b-was-finalized" id="step-2-reach-the-round-after-which-b-was-finalized">Step 2. Reach the round after which B was finalized</a></h2>
+<h2 id="step-2-reach-the-round-after-which-b-was-finalized"><a class="header" href="#step-2-reach-the-round-after-which-b-was-finalized">Step 2. Reach the round after which B was finalized</a></h2>
 <p>Once we get a reply containing votes S for the round r+1, we reach a point
 where we can start to get closure.</p>
 <p>At this point, when we are in round r+1, our request for estimate of the
@@ -263,14 +263,14 @@ consensus can be subverted.</p>
 <p>Now if for this step, if the reply to the request is instead a set S of
 prevotes, we need to take one additional step before we can home in on the
 equivocators.</p>
-<h2><a class="header" href="#step-3-instead-ask-the-precommitters-for-b" id="step-3-instead-ask-the-precommitters-for-b">Step 3. Instead ask the precommitters for B</a></h2>
+<h2 id="step-3-instead-ask-the-precommitters-for-b"><a class="header" href="#step-3-instead-ask-the-precommitters-for-b">Step 3. Instead ask the precommitters for B</a></h2>
 <p>To be able to find the equivocators we need something to compare the reply from step 2 against. As such, we send a request to all voters in the commit for block B, asking:</p>
 <blockquote>
 <p><em>What prevotes have you seen for round r?</em></p>
 </blockquote>
 <p>A valid reply is a set T of prevotes with a supermajority for B. With this we
 can now take the union between T and S to find the equivocators.</p>
-<h1><a class="header" href="#example" id="example">Example</a></h1>
+<h1 id="example"><a class="header" href="#example">Example</a></h1>
 <p>Consider the set of voters
 $$V =\lbrace\text{Alice}, \text{Bob}, \text{Carol}, \text{Dave}\rbrace.$$
 Let's assume Alice and Bob are Byzantine voters and manage to partition the
@@ -356,7 +356,7 @@ $$</p>
 $$</p>
 <p>Now we have a situation where we sent valid commit messages finalizing blocks on both forks of the chain. Let's now illustrate the steps needed to uncover the equivocating voters.</p>
 <p>Step 0: as soon as we detect both commit messages, for block 2 and 8, respectively, we trigger the accountable safety protocol since these are not ancestors of each either, in either direction.</p>
-<h2><a class="header" href="#step-1" id="step-1">Step 1</a></h2>
+<h2 id="step-1"><a class="header" href="#step-1">Step 1</a></h2>
 <p>Question to $V_2$:</p>
 <blockquote>
 <p>Why did the estimate for round 2 in round 3 not include block 2 when prevoting of precommitting?</p>
@@ -366,7 +366,7 @@ $$</p>
 \text{Round 2, precommits} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 1 \rbrace.
 $$
 This is a valid response since it's impossible to have a supermajority for block 2. For this step it doesn't matter if the reply is the set of prevotes or a set of precommits. Since this response is for the round after the block 2 was finalized in, we move to the next step.</p>
-<h2><a class="header" href="#step-2" id="step-2">Step 2</a></h2>
+<h2 id="step-2"><a class="header" href="#step-2">Step 2</a></h2>
 <p>Question to all the precommit voters in the commit for for block 8, which is $V_2$:</p>
 <blockquote>
 <p>Why did the estimate for round 1 in round 2 not include block 2 when prevoting of precommitting?</p>
@@ -384,7 +384,7 @@ Then we see that Alice and Bob occur twice, and that they equivocated.</p>
 <p>$$
 \text{Round 1, prevotes} = \lbrace \text{Alice} = 1, \text{Bob} = 1, \text{Dave} = 5 \rbrace.
 $$</p>
-<h2><a class="header" href="#step-3" id="step-3">Step 3</a></h2>
+<h2 id="step-3"><a class="header" href="#step-3">Step 3</a></h2>
 <p>Question to all precommit voters in the commit for block 2:</p>
 <blockquote>
 <p>What prevotes have you seen for round 1?</p>
@@ -394,15 +394,15 @@ $$</p>
 \text{Round 1, prevotes} = \lbrace \text{Alice} = 4, \text{Bob} = 4, \text{Carol} = 2 \rbrace.
 $$</p>
 <p>Taking the union with this and the reply to the query in step 2 we see that Alice and Bob equivocated.</p>
-<h1><a class="header" href="#implementation" id="implementation">Implementation</a></h1>
-<h1><a class="header" href="#todos" id="todos">TODOs</a></h1>
+<h1 id="implementation"><a class="header" href="#implementation">Implementation</a></h1>
+<h1 id="todos"><a class="header" href="#todos">TODOs</a></h1>
 <p>List of open questions of things that needs adding</p>
 <ol>
 <li>Find an example of a scenario where voters are only able to reply in terms of prevotes. This ties in
 to why we accept prevotes. Hypothetically, the protocol would a notably simpler if we could demand
 precommiot replies only.</li>
 </ol>
-<h1><a class="header" href="#references" id="references">References</a></h1>
+<h1 id="references"><a class="header" href="#references">References</a></h1>
 <ol>
 <li>https://github.com/w3f/consensus/blob/master/pdf/grandpa.pdf</li>
 <li>https://arxiv.org/pdf/2007.01560.pdf</li>

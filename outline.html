@@ -166,10 +166,10 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#outline-of-the-procedure" id="outline-of-the-procedure">Outline of the Procedure</a></h1>
+                        <h1 id="outline-of-the-procedure"><a class="header" href="#outline-of-the-procedure">Outline of the Procedure</a></h1>
 <p>With these definitions we can begin outlining the procedure to track down
 equivocating voters.</p>
-<h2><a class="header" href="#step-0" id="step-0">Step 0.</a></h2>
+<h2 id="step-0"><a class="header" href="#step-0">Step 0.</a></h2>
 <p>The first step is detecting blocks B and B' on two different branches being
 finalized. If these two blocks were finalized in the same round, we can take
 the union of the set of precommits to quickly find the equivocators. So let's
@@ -189,7 +189,7 @@ round r. That is, r'&gt; r.</p>
 </code></pre>
 <p>This occurs when a node detects commit messages for mutually conflicting
 blocks. At this point they trigger the accountable safety protocol.</p>
-<h2><a class="header" href="#step-1-start-asking-questions-about-b" id="step-1-start-asking-questions-about-b">Step 1. Start asking questions about B'</a></h2>
+<h2 id="step-1-start-asking-questions-about-b"><a class="header" href="#step-1-start-asking-questions-about-b">Step 1. Start asking questions about B'</a></h2>
 <p>When we have two blocks that are finalized on conflicting branches, we
 naturally ask ourselves, when the latter block was voted for, why wasn't the
 former into taken into account? More precisely, when finalizing B' in round r',
@@ -218,7 +218,7 @@ containing the voter set S we can make progress. Only in the case when we get
 no replies at all do we consider the non-responders as Byzantine.</p>
 <p>We keep sending out requests asking why the estimate in each round didn't
 include B, until we get a reply for the estimate of round r+1.</p>
-<h2><a class="header" href="#step-2-reach-the-round-after-which-b-was-finalized" id="step-2-reach-the-round-after-which-b-was-finalized">Step 2. Reach the round after which B was finalized</a></h2>
+<h2 id="step-2-reach-the-round-after-which-b-was-finalized"><a class="header" href="#step-2-reach-the-round-after-which-b-was-finalized">Step 2. Reach the round after which B was finalized</a></h2>
 <p>Once we get a reply containing votes S for the round r+1, we reach a point
 where we can start to get closure.</p>
 <p>At this point, when we are in round r+1, our request for estimate of the
@@ -232,7 +232,7 @@ consensus can be subverted.</p>
 <p>Now if for this step, if the reply to the request is instead a set S of
 prevotes, we need to take one additional step before we can home in on the
 equivocators.</p>
-<h2><a class="header" href="#step-3-instead-ask-the-precommitters-for-b" id="step-3-instead-ask-the-precommitters-for-b">Step 3. Instead ask the precommitters for B</a></h2>
+<h2 id="step-3-instead-ask-the-precommitters-for-b"><a class="header" href="#step-3-instead-ask-the-precommitters-for-b">Step 3. Instead ask the precommitters for B</a></h2>
 <p>To be able to find the equivocators we need something to compare the reply from step 2 against. As such, we send a request to all voters in the commit for block B, asking:</p>
 <blockquote>
 <p><em>What prevotes have you seen for round r?</em></p>

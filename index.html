@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#introduction" id="introduction">Introduction</a></h1>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <p>Accountable Safety for GRANDPA is a synchronous interactive protocol for
 tracking down and proving after the fact when participants misbehave. The idea
 is that even is more than 1/3 of participants misbehave and finalize
@@ -178,17 +178,17 @@ proof by construction for showing that if two blocks B and B' for which valid
 commit messages were sent, but do not lay on the same chain, then there are at
 least f + 1 Byzantine voters. The proof itself then provides the procedure for
 tracking down this set of misbehaving voters.</p>
-<h2><a class="header" href="#definitions" id="definitions">Definitions</a></h2>
+<h2 id="definitions"><a class="header" href="#definitions">Definitions</a></h2>
 <p>We refer to the GRANDPA paper for in-depth material, it is still useful to
 restate a some of the more important definitions here.</p>
-<h3><a class="header" href="#ghost-function" id="ghost-function">GHOST Function</a></h3>
+<h3 id="ghost-function"><a class="header" href="#ghost-function">GHOST Function</a></h3>
 <p>The function $g(S)$ takes the set of votes and returns the block B with the
 highest block number such that S has a supermajority for B.</p>
-<h3><a class="header" href="#estimate" id="estimate">Estimate</a></h3>
+<h3 id="estimate"><a class="header" href="#estimate">Estimate</a></h3>
 <p>$E_{r,v}$ is voter v's estimate of what might have been finalized in round
 r, given by the last block in the chain with head $g(V_{r,v})$ for which it
 is possible for $C_{r,v}$ to have a supermajority.</p>
-<h3><a class="header" href="#completable" id="completable">Completable</a></h3>
+<h3 id="completable"><a class="header" href="#completable">Completable</a></h3>
 <p>Denote descendent blocks by $B &lt; B'$, where block B' is a descendent of
 block B. Then if either $E_{r,v} &lt; g(V_{r,v})$ or it is impossible for
 $C_{r,v}$ to have a supermajority for any children of $g(V_{r,v})$,
