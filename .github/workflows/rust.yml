@@ -33,3 +33,4 @@ jobs:
             # mdbook-version: 'latest'
 
         - run: mdbook build
+          working-directory: ./doc
