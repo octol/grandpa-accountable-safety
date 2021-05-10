@@ -34,7 +34,8 @@ jobs:
             mdbook-version: 'latest'
 
         #- run: cargo install mdbook-katex
-        - run: cargo install --git https://github.com/dylanowen/mdbook-graphviz mdbook-graphviz
+        #- run: cargo install --git https://github.com/dylanowen/mdbook-graphviz mdbook-graphviz
+        - run: cargo install mdbook-graphviz
         - run: mdbook build
           working-directory: ./doc
 
