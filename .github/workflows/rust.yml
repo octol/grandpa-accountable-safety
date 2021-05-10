@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
     - name: Build
       run: cargo build --verbose
     - name: Run tests
@@ -29,10 +31,10 @@ jobs:
         - name: Setup mbBook
           uses: peaceiris/actions-mdbook@v1
           with:
-            mdbook-version: '0.4.7'
+            mdbook-version: 'latest'
 
-        - run: cargo install mdbook-katex
-        - run: cargo install --git https://github.com/dylanowen/mdbook-graphviz mdbook-graphviz
+        #- run: cargo install mdbook-katex
+        #- run: cargo install --git https://github.com/dylanowen/mdbook-graphviz mdbook-graphviz
         - run: mdbook build
           working-directory: ./doc
 
