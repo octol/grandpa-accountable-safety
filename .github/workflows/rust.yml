@@ -34,7 +34,7 @@ jobs:
         - name: Setup graphviz
           uses: ts-graphviz/setup-graphviz@v1
 
-        #- run: cargo install mdbook-katex
+        - run: cargo install mdbook-katex
         - run: cargo install --git https://github.com/dylanowen/mdbook-graphviz mdbook-graphviz
         - run: mdbook build doc
 
