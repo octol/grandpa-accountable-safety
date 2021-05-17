@@ -139,13 +139,15 @@
                         </a>
                         
                         
+                        
+
                     </div>
                 </div>
 
                 
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -168,6 +170,134 @@
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
 <h1 id="implementation"><a class="header" href="#implementation">Implementation</a></h1>
+<p>The natural place to run the accountable safety protocol is on-chain. Only voters participate, since
+they are guaranteed to be able to respond to all requests. Although anyone listening to the grandpa
+protocol should in principle be able to take part.</p>
+<h2 id="comparison-with-proof-of-concept"><a class="header" href="#comparison-with-proof-of-concept">Comparison with proof-of-concept</a></h2>
+<p>In the proof-of-concept implementation we have the methods</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>fn start(
+	block_not_included,
+	Round_for_block_not_included,
+	commit_for_block_not_included
+)
+
+// Ask the question why the estimate the previous round didn't include the earlier block
+fn start_query_round(round, voters) -&gt; Query
+
+fn add_response(round, voter, query_response) -&gt; Option&lt;NextQuery&gt;
+
+// Ask what prevotes the voters know about
+fn start_prevote_query(round, voters) -&gt; PrevoteQuery
+
+fn add_prevote_response(round, voter, query_response) -&gt; Option&lt;NextQuery&gt;
+
+fn equivocations_detected() -&gt; Vec&lt;EquivocationDetected&gt;
+<span class="boring">}
+</span></code></pre></pre>
+<p>where</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct Query {
+	pub round: RoundNumber,
+	pub receivers: Vec&lt;VoterId&gt;,
+	pub block_not_included: BlockNumber,
+}
+
+enum NextQuery {
+	AskAboutRound(Query),
+	PrevotesForRound(PrevoteQuery),
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="input"><a class="header" href="#input">Input</a></h3>
+<p>Like the equivocation reporting API for GRANDPA, the API here would use unsigned extrinsics. To
+avoid spam we do like with equivocation reporting that only block authors can submit. The
+alternative to using unsigned extrinsics would be to use signed extrinsics, but this would mean the
+need to maintain funded accounts. This might deter reporting issues.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>sp_api::decl_runtime_apis! {
+	pub trait GrandpaApi {
+		// Initiate the accountable safety protocol. We can have multiple concurrently
+		// running sessions so we need an instance tag to separate them.
+		// Note: there is an assumption here that `commit_for_new_block` is for a later
+		// round than the other
+		fn start_accountable_safety_protocol(
+			commit_for_new_block,
+			commit_for_block_not_included,
+		);
+
+		// Ask the question why the estimate the previous round didn't
+		// include the earlier block.
+		fn start_query_round(round, voters, instance);
+
+		// Each voter that are recipients for the queries add their responses.
+		fn add_response(round, voter, query_response, instance);
+
+		// Ask what prevotes the voters know about
+		fn start_prevote_query(round, voters, instance);
+
+		fn add_prevote_response(round, voter, query_response, instance);
+	}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>The methods <code>start_query_round</code> and <code>start_prevote_query</code> would be called to progress between
+rounds.</p>
+<h3 id="output"><a class="header" href="#output">Output</a></h3>
+<p>Nodes will track the state of the accountable safety protocol by calling into the runtime when
+importing blocks.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>sp_api::decl_runtime_apis! {
+	pub trait GrandpaApi {
+		// Currently running accountable safety instances.
+		fn active_accountable_safety_instances() -&gt; Vec&lt;AccountableSafetyId&gt;;
+
+		// Get the state of a running accountable instance
+		fn acountable_safety_state(instance_id) -&gt; Option&lt;AccountableSafety&gt;;
+	}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>In particular, they would need to keep track of if their response is needed. If requested to do so,
+nodes would then log their responses using <code>add_response</code> and <code>add_prevote_response</code>.</p>
+<p><em>Note:</em> Instead of having to call into the runtime when importing blocks, an alternative would be to
+use Digests.</p>
+<h2 id="storage"><a class="header" href="#storage">Storage</a></h2>
+<p>The equivalent of <code>AccountableSafety</code> struct will be stored on-chain. In the proof-of-concept this
+is</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct AccountableSafety {
+	block_not_included: BlockNumber,
+	round_for_block_not_included: RoundNumber,
+	commit_for_block_not_included: Commit,
+	querying_rounds: BTreeMap&lt;RoundNumber, QueryState&gt;,
+	prevote_queries: BTreeMap&lt;RoundNumber, QueryState&gt;,
+}
+
+struct QueryState {
+	round: RoundNumber,
+	voters: Vec&lt;VoterId&gt;,
+	responses: BTreeMap&lt;VoterId, QueryResponse&gt;,
+	equivocations: Vec&lt;EquivocationDetected&gt;,
+}
+
+enum QueryResponse {
+	Prevotes(Vec&lt;Prevote&gt;),
+	Precommits(Vec&lt;Precommit&gt;),
+}
+<span class="boring">}
+</span></code></pre></pre>
+<p>For a validator set of 1000 validators, how much would we then store?</p>
 
                     </main>
 
