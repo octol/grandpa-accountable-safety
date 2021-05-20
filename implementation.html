@@ -213,6 +213,15 @@ enum NextQuery {
 }
 <span class="boring">}
 </span></code></pre></pre>
+<h2 id="outline"><a class="header" href="#outline">Outline</a></h2>
+<p>We divide up the implementation into two main components.</p>
+<ol>
+<li>The runtime maintains the current state on-chain, which then exposes functions to initiate the
+protocol, query the state, and submit replies to the questions asked by the protocol.</li>
+<li>An accountable safety worker that listens to incoming blocks to detect mutually
+inconsistent finalized blocks, and then calls into the runtime to start the protocol. It also
+monitors the state of the protocol and submits replies when asked for.</li>
+</ol>
 <h3 id="input"><a class="header" href="#input">Input</a></h3>
 <p>Like the equivocation reporting API for GRANDPA, the API here would use unsigned extrinsics. To
 avoid spam we do like with equivocation reporting that only block authors can submit. The
@@ -227,31 +236,23 @@ need to maintain funded accounts. This might deter reporting issues.</p>
 		// running sessions so we need an instance tag to separate them.
 		// Note: there is an assumption here that `commit_for_new_block` is for a later
 		// round than the other
-		fn start_accountable_safety_protocol(
+		fn submit_start_accountable_safety_protocol_extrinsic(
 			commit_for_new_block,
 			commit_for_block_not_included,
 		);
 
-		// Ask the question why the estimate the previous round didn't
-		// include the earlier block.
-		fn start_query_round(round, voters, instance);
-
 		// Each voter that are recipients for the queries add their responses.
 		fn add_response(round, voter, query_response, instance);
 
-		// Ask what prevotes the voters know about
-		fn start_prevote_query(round, voters, instance);
-
+		// Add response for when asked what prevotes seen.
 		fn add_prevote_response(round, voter, query_response, instance);
 	}
 }
 <span class="boring">}
 </span></code></pre></pre>
-<p>The methods <code>start_query_round</code> and <code>start_prevote_query</code> would be called to progress between
-rounds.</p>
 <h3 id="output"><a class="header" href="#output">Output</a></h3>
 <p>Nodes will track the state of the accountable safety protocol by calling into the runtime when
-importing blocks.</p>
+importing blocks. This is handled by a separate running worker, and not by the import pipeline.</p>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -269,7 +270,7 @@ importing blocks.</p>
 <p>In particular, they would need to keep track of if their response is needed. If requested to do so,
 nodes would then log their responses using <code>add_response</code> and <code>add_prevote_response</code>.</p>
 <p><em>Note:</em> Instead of having to call into the runtime when importing blocks, an alternative would be to
-use Digests.</p>
+use Digests. The downside of this is that it would be harder to deprecate, if necessary.</p>
 <h2 id="storage"><a class="header" href="#storage">Storage</a></h2>
 <p>The equivalent of <code>AccountableSafety</code> struct will be stored on-chain. In the proof-of-concept this
 is</p>
@@ -297,7 +298,6 @@ enum QueryResponse {
 }
 <span class="boring">}
 </span></code></pre></pre>
-<p>For a validator set of 1000 validators, how much would we then store?</p>
 
                     </main>
 
