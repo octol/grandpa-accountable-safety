@@ -41,6 +41,16 @@ enum NextQuery {
 }
 ```
 
+## Outline
+
+We divide up the implementation into two main components.
+
+1. The runtime maintains the current state on-chain, which then exposes functions to initiate the
+   protocol, query the state, and submit replies to the questions asked by the protocol.
+2. An accountable safety worker that listens to incoming blocks to detect mutually
+   inconsistent finalized blocks, and then calls into the runtime to start the protocol. It also
+   monitors the state of the protocol and submits replies when asked for.
+
 ### Input
 
 Like the equivocation reporting API for GRANDPA, the API here would use unsigned extrinsics. To
@@ -55,33 +65,24 @@ sp_api::decl_runtime_apis! {
 		// running sessions so we need an instance tag to separate them.
 		// Note: there is an assumption here that `commit_for_new_block` is for a later
 		// round than the other
-		fn start_accountable_safety_protocol(
+		fn submit_start_accountable_safety_protocol_extrinsic(
 			commit_for_new_block,
 			commit_for_block_not_included,
 		);
 
-		// Ask the question why the estimate the previous round didn't
-		// include the earlier block.
-		fn start_query_round(round, voters, instance);
-
 		// Each voter that are recipients for the queries add their responses.
 		fn add_response(round, voter, query_response, instance);
 
-		// Ask what prevotes the voters know about
-		fn start_prevote_query(round, voters, instance);
-
+		// Add response for when asked what prevotes seen.
 		fn add_prevote_response(round, voter, query_response, instance);
 	}
 }
 ```
 
-The methods `start_query_round` and `start_prevote_query` would be called to progress between
-rounds.
-
 ### Output
 
 Nodes will track the state of the accountable safety protocol by calling into the runtime when
-importing blocks.
+importing blocks. This is handled by a separate running worker, and not by the import pipeline.
 
 ```rust
 sp_api::decl_runtime_apis! {
@@ -99,7 +100,7 @@ In particular, they would need to keep track of if their response is needed. If 
 nodes would then log their responses using `add_response` and `add_prevote_response`.
 
 *Note:* Instead of having to call into the runtime when importing blocks, an alternative would be to
-use Digests.
+use Digests. The downside of this is that it would be harder to deprecate, if necessary.
 
 ## Storage
 
@@ -127,5 +128,3 @@ enum QueryResponse {
 	Precommits(Vec<Precommit>),
 }
 ```
-
-For a validator set of 1000 validators, how much would we then store?
